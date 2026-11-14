@@ -23,6 +23,22 @@ export type Piece = {
   image: ProductImage | null;
 };
 
+/** Silhouette used to draw a garment when no real hanger photo exists. */
+export type GarmentKind = "kaftan" | "abaya" | "gown" | "lehenga" | "sharara" | "coord" | "jacket" | "stole";
+
+/**
+ * Product shot of the garment alone on a hanger (rail viewer).
+ * `front`/`back` are real photos when the client uploads them (gallery images
+ * with alt "hanger front" / "hanger back"); otherwise the UI draws `kind`
+ * filled with the `fabric` texture.
+ */
+export type GarmentShot = {
+  kind: GarmentKind;
+  fabric: ProductImage | null;
+  front: ProductImage | null;
+  back: ProductImage | null;
+};
+
 /** A colour option. `images` = [front, back, ...] for that colour. */
 export type Colorway = { name: string; hex: string; images: ProductImage[] };
 
@@ -48,6 +64,8 @@ export type Product = {
   cutout: ProductImage | null;
   /** Colour options with their own front/back photos (empty = single colour). */
   colorways: Colorway[];
+  /** Garment-only view for the rail (real hanger photos or drawn silhouette). */
+  garment: GarmentShot;
 };
 
 export type SectionCopy = {

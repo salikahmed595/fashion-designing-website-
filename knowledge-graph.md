@@ -53,17 +53,23 @@ Legend: ✅ verified · 🟡 proposed/unverified · ❓ open question
   - The Rail: sideways wardrobe (rotateY ~78°), selected garment faces front; Quick View modal with Front/Back flip, detail thumbs, colour tags that swap photos, sizes
   - Devotion: drag with momentum (no pin), fits one screen
   - Data: `Product.cutout`, `Product.colorways`, `hero.video`, `hero.models`; WP mapping + plugin fields
+- [x] Round 3 owner fixes (2026-11-14):
+  - Hero: realistic teal/magenta/brass boutique (refs: teal scalloped-niche bridal stores). Lacquered walls, scalloped niches with instanced hanging-garment atlas, coffered ceiling, track spots, chandelier, marble reflector, velvet sofa and armchairs, mirror, display table. Soft shadows; post-processing (N8AO, Bloom, DOF, SMAA, vignette) on desktop with a performance monitor that sheds effects. New files `BoutiqueGarments.tsx`, `BoutiqueFurniture.tsx`, `boutiqueShapes.ts`
+  - Models: vertex-shader gait (bob, pelvis shift/tilt, shoulder counter-rotation, lagged skirt swing, alternating leg push), curved path, turn to camera, sit; deformed shadow pass. Still a flat photo; truly natural walking needs `hero.video` or rigged characters
+  - Rail: clothes-only viewer (owner chose drawn garments in real fabrics). `rail/GarmentArt.tsx` draws 8 garment kinds as SVG filled with lookbook fabric crops, front/back, colour tint. `rail/SwingTags.tsx` hanging colour tags. FRONT|BACK flip; QuickView kept for model photos. Real hanger photos (`garment.front/back`) replace the art when uploaded
+  - Data: `Product.garment` (`kind`, `fabric`, `front`, `back`), `garmentKindOf()` in `lib/catalog.ts`
+  - New deps: `@react-three/postprocessing`, `postprocessing`
 - [ ] Local WordPress install + end-to-end test
+- [ ] Client's real hanger photos (front/back) for each product
 - [ ] Bundle discount enforced at WooCommerce checkout
 - [ ] Product detail and category pages
 - [ ] Real contact/appointment details; bridal photos from the client
 
-## Test results (2026-11-14, round 2)
-- ✅ `npm run lint` and `npm run build` (including TypeScript) pass.
-- ✅ Browser at 1350×760: hero sequence closed curtain → parted → hallway → models walking → seated with headline. Occasions heads intact. Try the Look focus (Chandni) centred with hotspots; panel shows piece images. Fabrics not pinned, 760px tall, wraps after 14× ArrowLeft. Rail chips with counts; Quick View on Gulbahar: Mauve→Rose swaps `mauve-*`→`rose-*` photos and the Back flip works. Devotion drag 0→666px with momentum, not pinned, exactly 760px tall.
-- ✅ 375×812: no horizontal overflow.
-- ✅ Fresh load: no console errors (earlier errors were from mid-edit compiles).
-- 🟡 Not verified: frame rate on a real laptop (pane ~40fps); hero reduced-motion, video and no-WebGL paths; touch on real devices; rail mobile sheet.
+## Test results (2026-11-14, round 3)
+- ✅ `npm run lint` and `npm run build` pass.
+- ✅ 1350×760: hero hallway → models walking → seated on the magenta sofa with headline; rail Kaftan filter → Gulbahar → Rose tag tints the art → BACK view; no console errors.
+- ✅ 375×812: no horizontal overflow; rail tags become chips under the garment.
+- 🟡 Not verified: real-laptop frame rate (pane ~47fps on Intel HD 630); fine visual detail (pane screenshots ~350px); hero reduced-motion, video and no-WebGL paths; rail drag and keyboard after the rebuild; touch devices.
 - ❌ WordPress side untested.
 
 ## Known issues, blockers & risks
@@ -72,7 +78,7 @@ Legend: ✅ verified · 🟡 proposed/unverified · ❓ open question
 - XAMPP PHP 8.0 may be too old for current WooCommerce. **(unverified)**
 - WebGL load on low-end phones; scenes pause off-screen and cap DPR 1.75. Needs real-device testing.
 - Unsplash placeholder photos (bridal only) are hotlinked. Replace them before launch.
-- Rail section is ~847px at a 760px viewport (slightly over one screen).
+- Rail section is ~834px at a 760px viewport (slightly over one screen).
 - Seated-pose hinge assumes knee/hip at 27%/50% of cut-out height (`BoutiqueModel.tsx`); new model photos may need tuning.
 
 ## Key paths & commands

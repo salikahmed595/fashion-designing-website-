@@ -1,433 +1,475 @@
 "use client";
-// The procedural boutique hallway: polished cream marble floor (with a soft
-// reflector on desktop), ivory walls cut with tall Mughal arched alcoves holding
-// shelves of jewel-toned fabric bolts (instanced), gold trim and cove lights,
-// chandeliers with glow halos, a wine runner, and at the far end a big arch over
-// a backlit jaali with a blush velvet camelback sofa, lamps and a rug.
+// The boutique architecture: deep-teal lacquered walls cut with scalloped
+// Mughal niches (brass bead mouldings, baked AO, warm wall-wash light pools),
+// picture-frame wainscot on the pilasters, brass skirting and cornice, a
+// coffered ceiling with recessed downlights and brass track spots, glass
+// pendant lanterns and a crystal chandelier, polished white marble with a real
+// (blurred) reflection and brass inlay lines, a kilim runner, side doorways
+// glowing from the fitting rooms, and the big scalloped arch with a backlit
+// jaali at the far end. Garments and furniture live in their own components.
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { MeshReflectorMaterial, RoundedBox } from "@react-three/drei";
-import { HALL, SOFA } from "./boutiqueLayout";
-import { glowTexture, jaaliTexture, marbleTexture, rng, rugTexture, shadowTexture } from "./boutiqueTextures";
+import { MeshReflectorMaterial } from "@react-three/drei";
+import { HALL } from "./boutiqueLayout";
+import { beadGeometry, frameGeometry, wallGeometry, type ArchSpec } from "./boutiqueShapes";
+import {
+  aoStripTexture,
+  glowTexture,
+  jaaliTexture,
+  marbleTexture,
+  nicheBackTexture,
+  rng,
+  rugTexture,
+  washTexture,
+} from "./boutiqueTextures";
 
-const GOLD = "#c9a24a";
-const IVORY = "#e2cdb4";
-const ALCOVE_BACK = "#6e1a36";
-/** Jewel tones for the folded fabric bolts. */
-const BOLTS = ["#9d1747", "#c2185b", "#0f6b5a", "#1d4e89", "#b8860b", "#6a1b9a", "#e8c1ad", "#7b1e1e", "#d4a017", "#2e7d32", "#f3e3d3", "#ad1457", "#e3187d"];
-const rngColor = (r: () => number) => BOLTS[Math.floor(r() * BOLTS.length)];
+const NICHE: ArchSpec = { ...HALL.niche };
+const DOOR: ArchSpec = { w: HALL.door.w, base: 0, spring: HALL.door.spring, peak: HALL.door.peak, lobes: 5 };
+const END: ArchSpec = { w: 3.3, base: 0, spring: 2.55, peak: 3.55, lobes: 9, depth: 0.11 };
+const LEN = HALL.entranceZ - HALL.endZ;
+const MID_Z = (HALL.entranceZ + HALL.endZ) / 2;
+/** Pilaster centres between niches (for wainscot frames and track spot aim). */
+const PILASTERS = [13.8, 11.0, 8.2, 5.4, 2.1];
 
-/** Pointed (Mughal) arch outline into a path, from `base` up to the `peak`. */
-function arch(p: THREE.Path, cx: number, w: number, spring: number, peak: number, base: number) {
-  const h = peak - spring;
-  p.moveTo(cx - w / 2, base);
-  p.lineTo(cx - w / 2, spring);
-  p.bezierCurveTo(cx - w / 2, spring + h * 0.62, cx - w * 0.14, peak - h * 0.2, cx, peak);
-  p.bezierCurveTo(cx + w * 0.14, peak - h * 0.2, cx + w / 2, spring + h * 0.62, cx + w / 2, spring);
-  p.lineTo(cx + w / 2, base);
-  p.closePath();
+export function makeHallMaterials() {
+  return {
+    wall: new THREE.MeshPhysicalMaterial({ color: "#0f4c48", roughness: 0.42, clearcoat: 0.55, clearcoatRoughness: 0.28 }),
+    moulding: new THREE.MeshPhysicalMaterial({ color: "#16625c", roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.25 }),
+    brass: new THREE.MeshStandardMaterial({ color: "#d4ac58", metalness: 1, roughness: 0.28 }),
+    brushed: new THREE.MeshStandardMaterial({ color: "#c79f4e", metalness: 1, roughness: 0.42 }),
+    black: new THREE.MeshStandardMaterial({ color: "#151515", metalness: 0.6, roughness: 0.45 }),
+    ceiling: new THREE.MeshStandardMaterial({ color: "#0b3936", roughness: 0.85 }),
+    bulb: new THREE.MeshBasicMaterial({ color: new THREE.Color("#fff1d6").multiplyScalar(6), toneMapped: false }),
+    lens: new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffe6bf").multiplyScalar(3.5), toneMapped: false }),
+    glass: new THREE.MeshPhysicalMaterial({
+      color: "#fff3df",
+      roughness: 0.06,
+      metalness: 0,
+      transparent: true,
+      opacity: 0.32,
+      clearcoat: 1,
+      emissive: "#ffcf8f",
+      emissiveIntensity: 0.25,
+      depthWrite: false,
+    }),
+    crystal: new THREE.MeshPhysicalMaterial({
+      color: "#ffffff",
+      roughness: 0.02,
+      metalness: 0.1,
+      clearcoat: 1,
+      emissive: "#ffe8c0",
+      emissiveIntensity: 0.6,
+      envMapIntensity: 2.5,
+    }),
+  };
 }
+type Mats = ReturnType<typeof makeHallMaterials>;
 
-/** A gold band that follows an arch's outline. */
-function archRing(w: number, spring: number, peak: number, t = 0.09) {
-  const s = new THREE.Shape();
-  arch(s, 0, w + t * 2, spring, peak + t * 1.4, 0);
-  const hole = new THREE.Path();
-  arch(hole, 0, w, spring, peak, 0.001);
-  s.holes.push(hole);
-  return new THREE.ExtrudeGeometry(s, { depth: 0.04, bevelEnabled: false, curveSegments: 20 });
-}
-
-type Arch = { u: number; w: number; spring: number; peak: number };
-
-/** Wall slab (u along the wall, v up) with arched openings, extruded to show the reveals. */
-function wallGeometry(u0: number, u1: number, arches: Arch[], depth: number) {
-  const s = new THREE.Shape();
-  s.moveTo(u0, -0.05);
-  s.lineTo(u1, -0.05);
-  s.lineTo(u1, HALL.height);
-  s.lineTo(u0, HALL.height);
-  s.closePath();
-  for (const a of arches) {
-    const h = new THREE.Path();
-    arch(h, a.u, a.w, a.spring, a.peak, 0);
-    s.holes.push(h);
-  }
-  return new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: false, curveSegments: 20 });
-}
-
-const ALCOVE = { w: 1.6, spring: 2.75, peak: 3.55 };
-const DOOR = { w: 1.4, spring: 2.5, peak: 3.25 };
-
-function SideWall({ side, materials }: { side: -1 | 1; materials: Mats }) {
-  // Left wall (side -1) is rotated so local u maps to world -z; right wall to +z.
+/** One side wall: slab with niches + doorway, niche backs, washes, beads, frames, skirting, cornice. */
+function SideWall({ side, m, tex }: { side: -1 | 1; m: Mats; tex: Tex }) {
   const sign = side === -1 ? -1 : 1;
-  const arches: Arch[] = [
-    ...HALL.alcoves.map((z) => ({ u: sign * z, ...ALCOVE })),
-    { u: sign * HALL.doorZ, ...DOOR },
-  ];
   const geo = useMemo(() => {
     const a = sign * HALL.endZ;
     const b = sign * HALL.entranceZ;
-    return wallGeometry(Math.min(a, b), Math.max(a, b), arches, HALL.wallDepth);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const holes = [
+      ...HALL.niches.map((z) => ({ u: sign * z, arch: NICHE })),
+      { u: sign * HALL.doorZ, arch: DOOR },
+    ];
+    return wallGeometry(Math.min(a, b), Math.max(a, b), HALL.height, holes, HALL.wallDepth);
   }, [sign]);
-  const ringA = useMemo(() => archRing(ALCOVE.w, ALCOVE.spring, ALCOVE.peak), []);
-  const ringD = useMemo(() => archRing(DOOR.w, DOOR.spring, DOOR.peak), []);
   const x = side * (HALL.halfWidth + HALL.wallDepth);
   const face = side * HALL.halfWidth;
   const rotY = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+  const inward = -side * (Math.PI / 2); // plane normal pointing into the hall
+  const nicheH = HALL.niche.peak + 0.15 - HALL.niche.base;
 
   return (
     <group>
-      <mesh geometry={geo} material={materials.wall} position={[x, 0, 0]} rotation={[0, rotY, 0]} />
-      {/* Gold arch trims, just proud of the wall face. */}
-      {HALL.alcoves.map((z) => (
-        <mesh
-          key={z}
-          geometry={ringA}
-          material={materials.gold}
-          position={[face - side * 0.02, 0, z]}
-          rotation={[0, -side * (Math.PI / 2), 0]}
-        />
+      <mesh geometry={geo} material={m.wall} position={[x, 0, 0]} rotation={[0, rotY, 0]} receiveShadow />
+      {HALL.niches.map((z) => (
+        <group key={z}>
+          {/* Niche back (baked AO) and the track spot's light pool on it. */}
+          <mesh position={[x - side * 0.004, HALL.niche.base + nicheH / 2, z]} rotation={[0, inward, 0]} receiveShadow>
+            <planeGeometry args={[HALL.niche.w + 0.2, nicheH]} />
+            <meshStandardMaterial map={tex.nicheBack} roughness={0.75} />
+          </mesh>
+          <mesh position={[x - side * 0.012, HALL.niche.base + nicheH * 0.55, z]} rotation={[0, inward, 0]}>
+            <planeGeometry args={[HALL.niche.w * 1.05, nicheH * 1.05]} />
+            <meshBasicMaterial map={tex.wash} transparent opacity={0.42} blending={THREE.AdditiveBlending} depthWrite={false} fog={false} />
+          </mesh>
+          {/* Brass rail. */}
+          <mesh position={[side * (HALL.halfWidth + 0.32), 2.3, z]} rotation={[Math.PI / 2, 0, 0]} material={m.brushed} castShadow>
+            <cylinderGeometry args={[0.014, 0.014, HALL.niche.w - 0.08, 8]} />
+          </mesh>
+          {/* Niche floor ledge. */}
+          <mesh position={[side * (HALL.halfWidth + HALL.wallDepth / 2), HALL.niche.base + 0.01, z]} material={m.brass}>
+            <boxGeometry args={[HALL.wallDepth, 0.02, HALL.niche.w]} />
+          </mesh>
+        </group>
       ))}
-      <mesh
-        geometry={ringD}
-        material={materials.gold}
-        position={[face - side * 0.02, 0, HALL.doorZ]}
-        rotation={[0, -side * (Math.PI / 2), 0]}
-      />
-      {/* Alcove backs (deep rose plaster) and the glowing doorway. */}
-      {HALL.alcoves.map((z) => (
-        <mesh key={`b${z}`} position={[x + side * 0.01, 1.8, z]} rotation={[0, -side * (Math.PI / 2), 0]} material={materials.alcove}>
-          <planeGeometry args={[ALCOVE.w + 0.1, 3.6]} />
-        </mesh>
+      {/* Fitting-room glow through the doorway. */}
+      <mesh position={[x + side * 0.3, 1.6, HALL.doorZ]} rotation={[0, inward, 0]}>
+        <planeGeometry args={[HALL.door.w + 0.4, 3.2]} />
+        <meshStandardMaterial color="#1a0d0d" emissive="#f4c8a6" emissiveIntensity={1.1} />
+      </mesh>
+      {/* Skirting (split around the doorway) and cornice. */}
+      {[
+        [HALL.doorZ + HALL.door.w / 2 + 0.02, HALL.entranceZ],
+        [HALL.endZ, HALL.doorZ - HALL.door.w / 2 - 0.02],
+      ].map(([z0, z1]) => (
+        <group key={z0}>
+          <mesh position={[face - side * 0.025, 0.07, (z0 + z1) / 2]} material={m.moulding} receiveShadow>
+            <boxGeometry args={[0.05, 0.14, z1 - z0]} />
+          </mesh>
+          <mesh position={[face - side * 0.052, 0.145, (z0 + z1) / 2]} material={m.brass}>
+            <boxGeometry args={[0.012, 0.014, z1 - z0]} />
+          </mesh>
+        </group>
       ))}
-      <mesh position={[x + side * 0.01, 1.7, HALL.doorZ]} rotation={[0, -side * (Math.PI / 2), 0]} material={materials.doorGlow}>
-        <planeGeometry args={[DOOR.w + 0.1, 3.4]} />
+      <mesh position={[face - side * 0.06, HALL.height - 0.1, MID_Z]} material={m.moulding}>
+        <boxGeometry args={[0.12, 0.2, LEN]} />
       </mesh>
-      {/* Skirting and cornice. */}
-      <mesh position={[face - side * 0.03, 0.08, (HALL.entranceZ + HALL.endZ) / 2]} material={materials.gold}>
-        <boxGeometry args={[0.06, 0.16, HALL.entranceZ - HALL.endZ]} />
+      <mesh position={[face - side * 0.125, HALL.height - 0.22, MID_Z]} material={m.brass}>
+        <boxGeometry args={[0.015, 0.02, LEN]} />
       </mesh>
-      <mesh position={[face - side * 0.05, 4.35, (HALL.entranceZ + HALL.endZ) / 2]} material={materials.gold}>
-        <boxGeometry args={[0.1, 0.12, HALL.entranceZ - HALL.endZ]} />
+      {/* Brass dado line at niche-base height on the pilasters. */}
+      <mesh position={[face - side * 0.01, HALL.niche.base - 0.02, MID_Z]} material={m.brass}>
+        <boxGeometry args={[0.02, 0.018, LEN]} />
       </mesh>
     </group>
   );
 }
 
-/** Shelves and folded fabric bolts in every alcove (two instanced meshes). */
-function Shelves({ mobile, materials }: { mobile: boolean; materials: Mats }) {
-  const bolts = useRef<THREE.InstancedMesh>(null);
-  const boards = useRef<THREE.InstancedMesh>(null);
-  const levels = mobile ? 4 : 6;
-  const perShelf = mobile ? 5 : 7;
-  const stack = mobile ? 1 : 2;
-  const boltCount = 2 * HALL.alcoves.length * levels * perShelf * stack;
-  const boardCount = 2 * HALL.alcoves.length * levels;
+/** Instanced bits shared by both walls: niche beads, wainscot frames, ceiling beams, downlights, track spots. */
+function Instanced({ m }: { m: Mats }) {
+  const beads = useRef<THREE.InstancedMesh>(null);
+  const frames = useRef<THREE.InstancedMesh>(null);
+  const beams = useRef<THREE.InstancedMesh>(null);
+  const downs = useRef<THREE.InstancedMesh>(null);
+  const heads = useRef<THREE.InstancedMesh>(null);
+  const lenses = useRef<THREE.InstancedMesh>(null);
+
+  const bead = useMemo(() => beadGeometry(NICHE), []);
+  const frame = useMemo(() => frameGeometry(), []);
+  const beamZ = useMemo(() => {
+    const out: number[] = [];
+    for (let z = HALL.entranceZ - 0.7; z > HALL.endZ + 0.3; z -= 1.4) out.push(z);
+    return out;
+  }, []);
+  const spotZ = useMemo(() => [12.4, 9.6, 6.8, 4.0, 1.4], []);
+  const frameCount = PILASTERS.length * 2 * 2 + 4;
 
   useLayoutEffect(() => {
-    const b = bolts.current;
-    const s = boards.current;
-    if (!b || !s) return;
-    const r = rng(11);
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const pos = new THREE.Vector3();
-    const scl = new THREE.Vector3();
-    const col = new THREE.Color();
-    let bi = 0;
-    let si = 0;
-    for (const side of [-1, 1] as const) {
-      const inner = side * (HALL.halfWidth + 0.06);
-      const back = side * (HALL.halfWidth + HALL.wallDepth - 0.02);
-      const cx = (inner + back) / 2;
-      const depth = Math.abs(back - inner);
-      for (const z of HALL.alcoves) {
-        for (let l = 0; l < levels; l++) {
-          const y = 0.35 + (l * 2.25) / (levels - 1);
-          pos.set(cx, y, z);
-          scl.set(depth, 0.035, ALCOVE.w - 0.06);
-          m.compose(pos, q.identity(), scl);
-          s.setMatrixAt(si++, m);
-          const slot = (ALCOVE.w - 0.16) / perShelf;
-          for (let k = 0; k < perShelf; k++) {
-            for (let h = 0; h < stack; h++) {
-              const bh = 0.11 + r() * 0.04;
-              // The top shelf carries a single row.
-              const empty = l === levels - 1 && h > 0;
-              pos.set(cx + side * (r() - 0.5) * 0.04, y + 0.02 + bh / 2 + h * (bh + 0.005), z - (ALCOVE.w - 0.16) / 2 + slot * (k + 0.5));
-              scl.set(empty ? 0.0001 : depth * (0.82 + r() * 0.1), bh, slot * (0.86 + r() * 0.08));
-              m.compose(pos, q.identity(), scl);
-              b.setMatrixAt(bi, m);
-              b.setColorAt(bi, col.set(rngColor(r)));
-              bi++;
-            }
-          }
+    const o = new THREE.Object3D();
+    const set = (mesh: THREE.InstancedMesh | null, i: number) => {
+      o.updateMatrix();
+      mesh?.setMatrixAt(i, o.matrix);
+    };
+    // Beads around each niche, flush with the wall face.
+    let i = 0;
+    for (const side of [-1, 1]) {
+      for (const z of HALL.niches) {
+        o.position.set(side * (HALL.halfWidth - 0.012), 0, z);
+        o.rotation.set(0, -side * (Math.PI / 2), 0);
+        o.scale.set(1, 1, 1);
+        set(beads.current, i++);
+      }
+    }
+    // Wainscot frames: lower and upper panel on every pilaster, and four on the end wall.
+    i = 0;
+    for (const side of [-1, 1]) {
+      for (const z of PILASTERS) {
+        for (const [y, h] of [
+          [0.36, 1.05],
+          [1.62, 1.95],
+        ]) {
+          o.position.set(side * (HALL.halfWidth - 0.008), y, z);
+          o.rotation.set(0, -side * (Math.PI / 2), 0);
+          o.scale.set(0.52, h, 1);
+          set(frames.current, i++);
         }
       }
     }
-    b.instanceMatrix.needsUpdate = true;
-    if (b.instanceColor) b.instanceColor.needsUpdate = true;
-    s.instanceMatrix.needsUpdate = true;
-  }, [levels, perShelf, stack]);
+    for (const x of [-2.35, 2.35]) {
+      for (const [y, h] of [
+        [0.36, 1.05],
+        [1.62, 1.95],
+      ]) {
+        o.position.set(x, y, HALL.endZ + 0.008);
+        o.rotation.set(0, 0, 0);
+        o.scale.set(1.0, h, 1);
+        set(frames.current, i++);
+      }
+    }
+    // Ceiling beams (coffers) and recessed downlights between them.
+    beamZ.forEach((z, k) => {
+      o.position.set(0, HALL.height - 0.07, z);
+      o.rotation.set(0, 0, 0);
+      o.scale.set(1, 1, 1);
+      set(beams.current, k);
+      o.position.set(0, HALL.height - 0.004, z - 0.7);
+      o.rotation.set(Math.PI / 2, 0, 0);
+      set(downs.current, k);
+    });
+    // Track spot heads aimed at the niches.
+    i = 0;
+    for (const side of [-1, 1]) {
+      for (const z of spotZ) {
+        o.position.set(side * 1.75, HALL.height - 0.2, z + 0.4);
+        o.rotation.set(0, 0, side * -0.75);
+        o.scale.set(1, 1, 1);
+        set(heads.current, i);
+        // The lens sits at the head's lower end.
+        const dir = new THREE.Vector3(0, -1, 0).applyEuler(o.rotation);
+        o.position.addScaledVector(dir, 0.09);
+        o.rotation.set(0, 0, 0);
+        o.lookAt(o.position.clone().add(dir));
+        set(lenses.current, i);
+        i++;
+      }
+    }
+    for (const mesh of [beads, frames, beams, downs, heads, lenses]) {
+      if (mesh.current) mesh.current.instanceMatrix.needsUpdate = true;
+    }
+  }, [beamZ, spotZ]);
 
   return (
     <>
-      <instancedMesh ref={bolts} args={[undefined, undefined, boltCount]} key={`b${boltCount}`}>
-        <boxGeometry />
-        <meshStandardMaterial roughness={0.72} color="#ffffff" />
+      <instancedMesh ref={beads} args={[bead, m.brass, HALL.niches.length * 2]} />
+      <instancedMesh ref={frames} args={[frame, m.moulding, frameCount]} receiveShadow />
+      <instancedMesh ref={beams} args={[undefined, m.moulding, beamZ.length]}>
+        <boxGeometry args={[HALL.halfWidth * 2, 0.14, 0.14]} />
       </instancedMesh>
-      <instancedMesh ref={boards} args={[undefined, undefined, boardCount]} material={materials.wood} key={`s${boardCount}`}>
-        <boxGeometry />
+      <instancedMesh ref={downs} args={[undefined, m.bulb, beamZ.length]}>
+        <circleGeometry args={[0.07, 20]} />
+      </instancedMesh>
+      <instancedMesh ref={heads} args={[undefined, m.black, spotZ.length * 2]}>
+        <cylinderGeometry args={[0.05, 0.045, 0.18, 14]} />
+      </instancedMesh>
+      <instancedMesh ref={lenses} args={[undefined, m.lens, spotZ.length * 2]}>
+        <circleGeometry args={[0.038, 16]} />
       </instancedMesh>
     </>
   );
 }
 
-function Chandelier({ z, materials, glow }: { z: number; materials: Mats; glow: THREE.Texture }) {
-  const candles = useMemo(() => Array.from({ length: 8 }, (_, i) => (i / 8) * Math.PI * 2), []);
-  const y = 4.2;
+function Pendant({ z, m, glow }: { z: number; m: Mats; glow: THREE.Texture }) {
+  const y = 2.95;
   return (
     <group position={[0, y, z]}>
-      <mesh position={[0, (HALL.height - y) / 2, 0]} material={materials.gold}>
-        <cylinderGeometry args={[0.015, 0.015, HALL.height - y, 6]} />
+      <mesh position={[0, (HALL.height - y) / 2 + 0.2, 0]} material={m.brass}>
+        <cylinderGeometry args={[0.008, 0.008, HALL.height - y - 0.4, 6]} />
       </mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]} material={materials.gold}>
-        <torusGeometry args={[0.46, 0.022, 8, 40]} />
+      <mesh position={[0, 0.26, 0]} material={m.brass}>
+        <cylinderGeometry args={[0.06, 0.12, 0.09, 20]} />
       </mesh>
-      <mesh position={[0, 0.28, 0]} rotation={[Math.PI / 2, 0, 0]} material={materials.gold}>
-        <torusGeometry args={[0.28, 0.018, 8, 32]} />
+      <mesh material={m.glass}>
+        <sphereGeometry args={[0.22, 28, 20]} />
       </mesh>
-      <mesh position={[0, -0.28, 0]} material={materials.crystal}>
-        <coneGeometry args={[0.2, 0.5, 12, 1, true]} />
+      <mesh material={m.bulb}>
+        <sphereGeometry args={[0.045, 12, 10]} />
       </mesh>
-      {candles.map((a) => (
-        <mesh key={a} position={[Math.cos(a) * 0.46, 0.07, Math.sin(a) * 0.46]} material={materials.flame}>
-          <sphereGeometry args={[0.04, 10, 8]} />
-        </mesh>
-      ))}
-      <sprite scale={[2.6, 2.6, 1]}>
-        <spriteMaterial map={glow} color="#ffb96a" transparent opacity={0.55} depthWrite={false} blending={THREE.AdditiveBlending} />
-      </sprite>
-      <sprite scale={[0.9, 0.9, 1]}>
-        <spriteMaterial map={glow} color="#fff0d0" transparent opacity={0.8} depthWrite={false} blending={THREE.AdditiveBlending} />
+      <mesh position={[0, -0.23, 0]} material={m.brass}>
+        <sphereGeometry args={[0.025, 10, 8]} />
+      </mesh>
+      <sprite scale={[1.4, 1.4, 1]}>
+        <spriteMaterial map={glow} color="#ffc98a" transparent opacity={0.35} depthWrite={false} blending={THREE.AdditiveBlending} />
       </sprite>
     </group>
   );
 }
 
-function Lamp({ x, materials, glow }: { x: number; materials: Mats; glow: THREE.Texture }) {
+/** Crystal chandelier: three brass rings dripping instanced crystals, candle bulbs. */
+function Chandelier({ m, glow, mobile }: { m: Mats; glow: THREE.Texture; mobile: boolean }) {
+  const crystals = useRef<THREE.InstancedMesh>(null);
+  const tiers = useMemo(() => [
+    { r: 0.62, y: 0, n: mobile ? 18 : 30 },
+    { r: 0.44, y: 0.26, n: mobile ? 14 : 22 },
+    { r: 0.26, y: 0.5, n: mobile ? 10 : 14 },
+  ], [mobile]);
+  const count = tiers.reduce((a, t) => a + t.n * 2, 0) + 12;
+  useLayoutEffect(() => {
+    const mesh = crystals.current;
+    if (!mesh) return;
+    const r = rng(21);
+    const o = new THREE.Object3D();
+    let i = 0;
+    for (const t of tiers) {
+      for (let k = 0; k < t.n; k++) {
+        const a = (k / t.n) * Math.PI * 2;
+        for (let d = 0; d < 2; d++) {
+          o.position.set(Math.cos(a) * t.r, t.y - 0.08 - d * 0.1 - r() * 0.04, Math.sin(a) * t.r);
+          o.rotation.set(0, a, 0);
+          o.scale.set(0.025, d ? 0.05 : 0.035, 0.025);
+          o.updateMatrix();
+          mesh.setMatrixAt(i++, o.matrix);
+        }
+      }
+    }
+    // Central cascade.
+    for (let k = 0; k < 12; k++) {
+      o.position.set(0, -0.15 - k * 0.06, 0);
+      o.scale.set(0.05 - k * 0.003, 0.04, 0.05 - k * 0.003);
+      o.updateMatrix();
+      mesh.setMatrixAt(i++, o.matrix);
+    }
+    mesh.count = i;
+    mesh.instanceMatrix.needsUpdate = true;
+  }, [tiers]);
   return (
-    <group position={[x, 0, -1.15]}>
-      <mesh position={[0, 0.02, 0]} material={materials.gold}>
-        <cylinderGeometry args={[0.16, 0.18, 0.04, 20]} />
+    <group position={[0, 3.0, HALL.chandelierZ]}>
+      <mesh position={[0, 0.75, 0]} material={m.brass}>
+        <cylinderGeometry args={[0.012, 0.012, 0.6, 6]} />
       </mesh>
-      <mesh position={[0, 0.8, 0]} material={materials.gold}>
-        <cylinderGeometry args={[0.018, 0.018, 1.6, 8]} />
-      </mesh>
-      <mesh position={[0, 1.68, 0]} material={materials.shade}>
-        <cylinderGeometry args={[0.16, 0.24, 0.3, 24, 1, true]} />
-      </mesh>
-      <sprite position={[0, 1.66, 0.05]} scale={[1.3, 1.3, 1]}>
-        <spriteMaterial map={glow} color="#ffc27a" transparent opacity={0.6} depthWrite={false} blending={THREE.AdditiveBlending} />
-      </sprite>
-    </group>
-  );
-}
-
-/** Blush velvet camelback sofa with rolled arms, cushions and gold legs. */
-function Sofa({ materials, shadow }: { materials: Mats; shadow: THREE.Texture }) {
-  const back = useMemo(() => {
-    const w = SOFA.width / 2;
-    const s = new THREE.Shape();
-    s.moveTo(-w, 0);
-    s.lineTo(w, 0);
-    s.lineTo(w, 0.5);
-    s.bezierCurveTo(w - 0.1, 0.62, 0.75, 0.66, 0.42, 0.78);
-    s.bezierCurveTo(0.2, 0.86, -0.2, 0.86, -0.42, 0.78);
-    s.bezierCurveTo(-0.75, 0.66, -w + 0.1, 0.62, -w, 0.5);
-    s.closePath();
-    const g = new THREE.ExtrudeGeometry(s, {
-      depth: 0.16,
-      bevelEnabled: true,
-      bevelThickness: 0.05,
-      bevelSize: 0.05,
-      bevelSegments: 4,
-      curveSegments: 24,
-    });
-    return g;
-  }, []);
-  const depth = SOFA.seatFrontZ - SOFA.backZ;
-  const cz = (SOFA.seatFrontZ + SOFA.backZ) / 2;
-  const baseTop = SOFA.seatY - 0.13;
-  return (
-    <group>
-      {/* Soft contact shadow under the whole sofa. */}
-      <mesh position={[0, 0.008, cz + 0.05]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[3.4, 1.5]} />
-        <meshBasicMaterial map={shadow} transparent depthWrite={false} opacity={0.85} />
-      </mesh>
-      {/* Gold legs. */}
-      {[-1, 1].flatMap((sx) =>
-        [-1, 1].map((sz) => (
-          <mesh key={`${sx}${sz}`} position={[sx * (SOFA.width / 2 - 0.12), 0.05, cz + sz * (depth / 2 - 0.08)]} material={materials.gold}>
-            <cylinderGeometry args={[0.035, 0.025, 0.1, 10]} />
+      {tiers.map((t) => (
+        <group key={t.r} position={[0, t.y, 0]}>
+          <mesh rotation={[Math.PI / 2, 0, 0]} material={m.brass}>
+            <torusGeometry args={[t.r, 0.014, 8, 48]} />
           </mesh>
-        )),
-      )}
-      {/* Plinth. */}
-      <RoundedBox args={[SOFA.width, baseTop - 0.1, depth]} radius={0.05} smoothness={3} position={[0, 0.1 + (baseTop - 0.1) / 2, cz]} material={materials.velvet} />
-      {/* Gold piping along the front of the plinth. */}
-      <mesh position={[0, 0.13, SOFA.seatFrontZ + 0.005]} material={materials.gold}>
-        <boxGeometry args={[SOFA.width - 0.1, 0.025, 0.02]} />
-      </mesh>
-      {/* Seat cushion. */}
-      <RoundedBox
-        args={[SOFA.width - 0.44, 0.15, depth - 0.2]}
-        radius={0.06}
-        smoothness={4}
-        position={[0, SOFA.seatY - 0.075, SOFA.seatFrontZ - (depth - 0.2) / 2 - 0.01]}
-        material={materials.velvetLight}
-      />
-      {/* Camelback. */}
-      <mesh geometry={back} material={materials.velvet} position={[0, baseTop - 0.02, SOFA.backZ]} />
-      {/* Rolled arms. */}
-      {[-1, 1].map((sx) => (
-        <group key={sx} position={[sx * (SOFA.width / 2 - 0.12), 0, cz]}>
-          <RoundedBox args={[0.24, 0.38, depth]} radius={0.05} smoothness={3} position={[0, baseTop + 0.15, 0]} material={materials.velvet} />
-          <mesh position={[sx * 0.02, baseTop + 0.36, 0]} rotation={[Math.PI / 2, 0, 0]} material={materials.velvet}>
-            <cylinderGeometry args={[0.15, 0.15, depth, 24]} />
-          </mesh>
-          <mesh position={[sx * 0.02, baseTop + 0.36, depth / 2 + 0.002]} material={materials.gold}>
-            <circleGeometry args={[0.07, 24]} />
-          </mesh>
+          {Array.from({ length: 6 }, (_, k) => (
+            <mesh key={k} position={[Math.cos((k / 6) * Math.PI * 2) * t.r, 0.06, Math.sin((k / 6) * Math.PI * 2) * t.r]} material={m.bulb}>
+              <sphereGeometry args={[0.022, 8, 6]} />
+            </mesh>
+          ))}
         </group>
       ))}
-      {/* Back cushions. */}
-      {[-1, 1].map((sx) => (
-        <RoundedBox
-          key={`c${sx}`}
-          args={[0.5, 0.42, 0.14]}
-          radius={0.07}
-          smoothness={4}
-          position={[sx * 0.82, SOFA.seatY + 0.24, SOFA.backZ + 0.32]}
-          rotation={[-0.22, sx * -0.12, 0]}
-          material={materials.cushion}
-        />
-      ))}
+      <instancedMesh ref={crystals} args={[undefined, m.crystal, count]}>
+        <octahedronGeometry args={[1, 0]} />
+      </instancedMesh>
+      <sprite scale={[2.6, 2.6, 1]} position={[0, 0.2, 0]}>
+        <spriteMaterial map={glow} color="#ffd29a" transparent opacity={0.3} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </sprite>
     </group>
   );
 }
 
-type Mats = ReturnType<typeof makeMaterials>;
-
-function makeMaterials(marble: THREE.Texture, jaali: THREE.Texture) {
+function makeTextures(mobile: boolean) {
+  const marble = marbleTexture(mobile ? 512 : 1024);
+  marble.repeat.set((HALL.halfWidth * 2) / 2.4, LEN / 2.4);
+  const runner = rugTexture(256, 1024, true);
+  runner.repeat.set(1, 4);
   return {
-    wall: new THREE.MeshStandardMaterial({ color: IVORY, roughness: 0.85 }),
-    alcove: new THREE.MeshStandardMaterial({ color: ALCOVE_BACK, roughness: 0.9 }),
-    doorGlow: new THREE.MeshStandardMaterial({ color: "#3a1420", emissive: "#f2b373", emissiveIntensity: 0.95, roughness: 1 }),
-    gold: new THREE.MeshStandardMaterial({ color: GOLD, metalness: 0.75, roughness: 0.32, emissive: "#3a2508", emissiveIntensity: 0.4 }),
-    wood: new THREE.MeshStandardMaterial({ color: "#7a4a24", roughness: 0.6, metalness: 0.1 }),
-    crystal: new THREE.MeshStandardMaterial({ color: "#fff4dc", emissive: "#ffcf8a", emissiveIntensity: 0.9, transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
-    flame: new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffd9a0").multiplyScalar(3), toneMapped: false }),
-    shade: new THREE.MeshStandardMaterial({ color: "#f6e6cf", emissive: "#ffb766", emissiveIntensity: 1.2, side: THREE.DoubleSide }),
-    cove: new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffcf8f").multiplyScalar(2.2), toneMapped: false }),
-    ceiling: new THREE.MeshStandardMaterial({ color: "#3d2318", roughness: 0.9 }),
-    velvet: new THREE.MeshPhysicalMaterial({ color: "#f0cdd4", roughness: 0.92, sheen: 1, sheenRoughness: 0.45, sheenColor: new THREE.Color("#fff0f4") }),
-    velvetLight: new THREE.MeshPhysicalMaterial({ color: "#f6dce1", roughness: 0.9, sheen: 1, sheenRoughness: 0.4, sheenColor: new THREE.Color("#ffffff") }),
-    cushion: new THREE.MeshPhysicalMaterial({ color: "#d9a441", roughness: 0.55, metalness: 0.2, sheen: 1, sheenColor: new THREE.Color("#ffe7a8") }),
-    floorPlain: new THREE.MeshStandardMaterial({ map: marble, roughness: 0.28, metalness: 0.05 }),
-    jaali: new THREE.MeshStandardMaterial({ color: "#000000", emissive: "#ffffff", emissiveMap: jaali, emissiveIntensity: 1.1 }),
+    marble,
+    runner,
+    jaali: jaaliTexture(),
+    glow: glowTexture(),
+    ao: aoStripTexture(),
+    wash: washTexture(),
+    nicheBack: nicheBackTexture(),
   };
 }
+type Tex = ReturnType<typeof makeTextures>;
 
 export default function BoutiqueHall({ mobile }: { mobile: boolean }) {
-  const tex = useMemo(() => {
-    const marble = marbleTexture(mobile ? 512 : 1024);
-    marble.repeat.set(3, 9);
-    const runner = rugTexture(256, 1024, true);
-    runner.repeat.set(1, 6);
-    return {
-      marble,
-      runner,
-      rug: rugTexture(512, 768),
-      jaali: jaaliTexture(),
-      glow: glowTexture(),
-      shadow: shadowTexture(),
-    };
-  }, [mobile]);
-  const mats = useMemo(() => makeMaterials(tex.marble, tex.jaali), [tex]);
-  const backWall = useMemo(
-    () =>
-      wallGeometry(-HALL.halfWidth - 0.01, HALL.halfWidth + 0.01, [{ u: 0, w: 3.6, spring: 2.7, peak: 4.4 }], 0.45),
+  const tex = useMemo(() => makeTextures(mobile), [mobile]);
+  const m = useMemo(() => makeHallMaterials(), []);
+  const endWall = useMemo(
+    () => wallGeometry(-HALL.halfWidth - 0.01, HALL.halfWidth + 0.01, HALL.height, [{ u: 0, arch: END }], 0.7),
     [],
   );
-  const bigRing = useMemo(() => archRing(3.6, 2.7, 4.4, 0.14), []);
-  const len = HALL.entranceZ - HALL.endZ;
-  const midZ = (HALL.entranceZ + HALL.endZ) / 2;
+  const endBead = useMemo(() => beadGeometry(END, 0.03), []);
+  const doorBead = useMemo(() => beadGeometry(DOOR, 0.022), []);
 
   return (
     <group>
-      {/* Floor. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, midZ]} material={mobile ? mats.floorPlain : undefined}>
-        <planeGeometry args={[HALL.halfWidth * 2 + 0.2, len]} />
-        {!mobile && (
+      {/* Polished white marble with a blurred real reflection (plain on mobile). */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, MID_Z]} receiveShadow>
+        <planeGeometry args={[HALL.halfWidth * 2 + 0.1, LEN]} />
+        {mobile ? (
+          <meshStandardMaterial map={tex.marble} roughness={0.2} />
+        ) : (
           <MeshReflectorMaterial
             map={tex.marble}
-            resolution={384}
-            blur={[240, 70]}
-            mixBlur={1}
-            mixStrength={1.6}
+            resolution={512}
+            blur={[260, 80]}
+            mixBlur={0.9}
+            mixStrength={2.2}
             mixContrast={1}
-            mirror={0.6}
-            depthScale={0.9}
-            minDepthThreshold={0.3}
-            maxDepthThreshold={1.4}
-            roughness={0.42}
-            metalness={0.08}
+            mirror={0.75}
+            depthScale={1.1}
+            minDepthThreshold={0.25}
+            maxDepthThreshold={1.3}
+            roughness={0.18}
+            metalness={0.05}
             color="#ffffff"
           />
         )}
       </mesh>
-      {/* Runner down the hall and the rug at the sofa. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.004, (HALL.entranceZ + 1.6) / 2]}>
-        <planeGeometry args={[1.3, HALL.entranceZ - 1.6]} />
+      {/* Baked AO where the floor meets the walls. */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} rotation={[-Math.PI / 2, 0, s * (Math.PI / 2)]} position={[s * (HALL.halfWidth - 0.35), 0.003, MID_Z]}>
+          <planeGeometry args={[LEN, 0.7]} />
+          <meshBasicMaterial map={tex.ao} transparent depthWrite={false} opacity={0.9} />
+        </mesh>
+      ))}
+      {/* Brass inlay lines and the kilim runner. */}
+      {[-1, 1].map((s) => (
+        <mesh key={`i${s}`} position={[s * 1.7, 0.002, (HALL.entranceZ + 1.9) / 2]} material={m.brass}>
+          <boxGeometry args={[0.025, 0.004, HALL.entranceZ - 1.9]} />
+        </mesh>
+      ))}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, (14.5 + 2.2) / 2]} receiveShadow>
+        <planeGeometry args={[1.2, 14.5 - 2.2]} />
         <meshStandardMaterial map={tex.runner} roughness={0.95} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0.15]}>
-        <planeGeometry args={[3.6, 2.4]} />
-        <meshStandardMaterial map={tex.rug} roughness={0.95} />
-      </mesh>
 
-      {/* Ceiling and cove light strips. */}
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, HALL.height, midZ]} material={mats.ceiling}>
-        <planeGeometry args={[HALL.halfWidth * 2 + 0.2, len]} />
+      {/* Ceiling. */}
+      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, HALL.height, MID_Z]} material={m.ceiling}>
+        <planeGeometry args={[HALL.halfWidth * 2 + 1.4, LEN]} />
       </mesh>
+      {/* Track rails. */}
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * 2.4, HALL.height - 0.02, midZ]} material={mats.cove}>
-          <boxGeometry args={[0.07, 0.02, len]} />
+        <mesh key={`t${s}`} position={[s * 1.75, HALL.height - 0.03, MID_Z + 1]} material={m.black}>
+          <boxGeometry args={[0.04, 0.04, LEN - 3]} />
         </mesh>
       ))}
 
-      <SideWall side={-1} materials={mats} />
-      <SideWall side={1} materials={mats} />
-      <Shelves mobile={mobile} materials={mats} />
-
-      {/* Back wall with the big arch, a backlit jaali screen behind it. */}
-      <mesh geometry={backWall} material={mats.wall} position={[0, 0, HALL.endZ - 0.45]} />
-      <mesh geometry={bigRing} material={mats.gold} position={[0, 0, HALL.endZ + 0.005]} />
-      <mesh position={[0, 2.2, HALL.endZ - 0.5]} material={mats.jaali}>
-        <planeGeometry args={[3.8, 4.6]} />
-      </mesh>
-
-      {HALL.chandeliers.map((z) => (
-        <Chandelier key={z} z={z} materials={mats} glow={tex.glow} />
+      <SideWall side={-1} m={m} tex={tex} />
+      <SideWall side={1} m={m} tex={tex} />
+      {[-1, 1].map((s) => (
+        <mesh
+          key={`db${s}`}
+          geometry={doorBead}
+          material={m.brass}
+          position={[s * (HALL.halfWidth - 0.012), 0, HALL.doorZ]}
+          rotation={[0, -s * (Math.PI / 2), 0]}
+        />
       ))}
-      <Lamp x={-1.85} materials={mats} glow={tex.glow} />
-      <Lamp x={1.85} materials={mats} glow={tex.glow} />
-      <Sofa materials={mats} shadow={tex.shadow} />
+      <Instanced m={m} />
+
+      {/* End wall: the big scalloped arch with a backlit jaali behind the sofa. */}
+      <mesh geometry={endWall} material={m.wall} position={[0, 0, HALL.endZ - 0.7]} receiveShadow />
+      <mesh geometry={endBead} material={m.brass} position={[0, 0, HALL.endZ + 0.012]} />
+      <mesh position={[0, 2.0, HALL.endZ - 0.69]} receiveShadow>
+        <planeGeometry args={[3.8, 4.0]} />
+        <meshStandardMaterial map={tex.nicheBack} roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 2.55, HALL.endZ - 0.66]}>
+        <planeGeometry args={[2.6, 1.9]} />
+        <meshStandardMaterial color="#000000" emissive="#ffffff" emissiveMap={tex.jaali} emissiveIntensity={0.9} />
+      </mesh>
+      {/* Wall sconces either side of the arch. */}
+      {[-2.35, 2.35].map((x) => (
+        <group key={x} position={[x, 2.95, HALL.endZ + 0.05]}>
+          <mesh material={m.brass}>
+            <boxGeometry args={[0.1, 0.3, 0.04]} />
+          </mesh>
+          <mesh position={[0, 0.12, 0.1]} material={m.glass}>
+            <cylinderGeometry args={[0.07, 0.09, 0.2, 16, 1, true]} />
+          </mesh>
+          <mesh position={[0, 0.1, 0.1]} material={m.bulb}>
+            <sphereGeometry args={[0.03, 8, 6]} />
+          </mesh>
+          <sprite position={[0, 0.1, 0.12]} scale={[0.9, 0.9, 1]}>
+            <spriteMaterial map={tex.glow} color="#ffcf90" transparent opacity={0.5} depthWrite={false} blending={THREE.AdditiveBlending} />
+          </sprite>
+        </group>
+      ))}
+
+      {HALL.pendants.map((z) => (
+        <Pendant key={z} z={z} m={m} glow={tex.glow} />
+      ))}
+      <Chandelier m={m} glow={tex.glow} mobile={mobile} />
     </group>
   );
 }

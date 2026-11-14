@@ -188,6 +188,8 @@ function Half({ side, progress }: { side: -1 | 1; progress: RefObject<number> })
         vertexShader={vertex}
         fragmentShader={fragment}
         side={THREE.DoubleSide}
+        // In the transparent queue so it draws after the hall's glows and glass.
+        transparent
         depthTest={false}
         depthWrite={false}
       />

@@ -8,7 +8,8 @@ WordPress is the **admin panel only** (headless). The client edits products and 
 | Products, prices, sale prices, stock, photos | **Products** (WooCommerce) |
 | Sizes | Product attribute **Size** (e.g. XS, S, M, L, XL, Custom) |
 | Front/back/detail photos | Product gallery in that order: front, back, then close-ups |
-| Model cut-out (Try the Look, rail) | Upload a transparent PNG/WebP to the gallery with "cutout" in its alt text or filename |
+| Garment-only shots for The Rail | Gallery images with alt text **"hanger front"** and **"hanger back"** (garment on a hanger, plain background). Without them the site draws the garment shape (from its garment category) filled with a gallery image whose alt contains **"fabric"** (else the first detail photo) |
+| Model cut-out (Try the Look) | Upload a transparent PNG/WebP to the gallery with "cutout" in its alt text or filename |
 | Colour options (Quick View tags) | Product attribute **Colour** with terms like `Rose #d4887f`; gallery holds front+back per colour, in the same order |
 | Hero models / walk-through video | **Settings → Anashion Headless → Hero**: two cut-out images, optional MP4 |
 | Card/ribbon colours | Product attribute **Swatch** with hex terms, e.g. `#e3187d` (optional; falls back to brand colours) |

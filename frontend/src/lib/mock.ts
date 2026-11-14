@@ -10,6 +10,7 @@ import type {
   ProductImage,
 } from "./types";
 import { PARENT, PLACEMENT } from "./types";
+import { garmentKindOf } from "./catalog";
 
 const u = (id: string, w = 1400) =>
   `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
@@ -253,6 +254,8 @@ type Seed = {
   pieces?: Piece[];
   cutout?: string;
   colorways?: { name: string; hex: string; photos: string[] }[];
+  /** Fabric texture for the drawn garment (defaults to a detail crop). */
+  fabric?: string;
 };
 
 const seeds: Seed[] = [
@@ -283,14 +286,14 @@ const seeds: Seed[] = [
   { name: "Gulbahar Embroidered Kaftan", price: 42000, garment: "kaftan", photos: [lb("mauve-front"), lb("mauve-back"), lb("mauve-d1"), lb("mauve-d2"), lb("mauve-d3")], cutout: lb("cut/mauve-front"), swatch: ["#a77a8a", "#f1e6d6", "#c88f8a"], place: [PLACEMENT.tryLook, PLACEMENT.fabrics, PLACEMENT.motion, PLACEMENT.weave], blurb: "Paisley-embroidered kaftan with a scalloped hem, in mauve or rose.", pieces: [piece("Gulbahar kaftan", 42000, "/lookbook/mauve-front.webp"), piece("Embroidered yoke", 0, "/lookbook/mauve-d1.webp"), piece("Scalloped sleeve", 0, "/lookbook/mauve-d2.webp"), piece("Border hem", 0, "/lookbook/mauve-d3.webp")], colorways: [{ name: "Mauve", hex: "#a77a8a", photos: [lb("mauve-front"), lb("mauve-back")] }, { name: "Rose", hex: "#d4887f", photos: [lb("rose-front"), lb("rose-back")] }, { name: "Ivory", hex: "#f1e9dc", photos: [lb("lace-front"), lb("lace-back")] }] },
   { name: "Saba Draped Cape Set", price: 56000, garment: "co-ord-set", photos: [lb("olive-front"), lb("olive-back"), lb("olive-d1"), lb("olive-d3")], cutout: lb("cut/olive-front"), swatch: ["#7b7a4a", "#141114", "#d8ccb4"], place: [PLACEMENT.tryLook, PLACEMENT.drape, PLACEMENT.collection, PLACEMENT.weave], blurb: "Fluid satin cape, shell and wide trousers with tonal micro-embroidery.", pieces: [piece("Draped cape", 32000, "/lookbook/olive-back.webp"), piece("Satin trousers", 14000, "/lookbook/olive-d3.webp"), piece("Embroidered cuff", 0, "/lookbook/olive-d1.webp")], colorways: [{ name: "Olive", hex: "#7b7a4a", photos: [lb("olive-front"), lb("olive-back")] }, { name: "Sand", hex: "#d8c7ac", photos: [lb("beige-front"), lb("beige-back")] }] },
   { name: "Mehr Contrast Kaftan", price: 38000, garment: "kaftan", photos: [lb("cape-front"), lb("cape-d1"), lb("cape-d2"), lb("cape-d3")], cutout: lb("cut/cape-front"), swatch: ["#efe7da", "#141114", "#c9a24a"], place: [PLACEMENT.tryLook, PLACEMENT.fabrics, PLACEMENT.devotion], blurb: "Ivory crepe kaftan with a black contrast border and a tie neck.", pieces: [piece("Contrast kaftan", 38000, "/lookbook/cape-front.webp"), piece("Tie neck", 0, "/lookbook/cape-d1.webp"), piece("Wide trousers", 9000, "/lookbook/cape-d3.webp")] },
-  { name: "The Modern Abaya", price: 36000, garment: "abaya", photos: [lb("col-abaya"), lb("dir-a4")], cutout: lb("cut/col-abaya"), swatch: ["#141114", "#d8c7ac", "#5d5559"], place: [PLACEMENT.motion, PLACEMENT.collection], blurb: "Minimal black abaya with tonal floral embroidery down one side." },
-  { name: "Linen Co-ord Set", price: 24000, garment: "co-ord-set", photos: [lb("col-coord"), lb("dir-a2")], cutout: lb("cut/col-coord"), swatch: ["#cbb79c", "#efe7da", "#8a7560"], place: [PLACEMENT.fabrics, PLACEMENT.devotion], blurb: "Relaxed linen shirt and wide trousers for everyday ease." },
-  { name: "The Statement Jacket", price: 46000, garment: "jacket", photos: [lb("col-jacket"), lb("dir-c2")], cutout: lb("cut/col-jacket"), swatch: ["#5a1424", "#d9b36c", "#efe7da"], place: [PLACEMENT.motion, PLACEMENT.fabrics], blurb: "Wine overlay jacket with artisanal gold borders." },
-  { name: "Olive Kaftan", price: 29000, garment: "kaftan", photos: [lb("col-kaftan"), lb("dir-a3")], cutout: lb("cut/col-kaftan"), swatch: ["#6b6a35", "#c9a24a", "#2b2a17"], place: [PLACEMENT.drape, PLACEMENT.weave], blurb: "Fluid olive kaftan with fine running-stitch lines." },
-  { name: "Modest Hoodie Set", price: 18500, garment: "co-ord-set", photos: [lb("col-hoodie"), lb("street-4")], cutout: lb("cut/col-hoodie"), swatch: ["#6e625a", "#1f2a44", "#141114"], place: [PLACEMENT.motion], blurb: "Contemporary comfort: oversized hoodie with cargo wide-legs.", colorways: [{ name: "Taupe", hex: "#6e625a", photos: [lb("col-hoodie")] }, { name: "Navy", hex: "#1f2a44", photos: [lb("street-4")] }, { name: "Black", hex: "#141114", photos: [lb("street-1")] }] },
-  { name: "Signature Stole", price: 9500, garment: "stole", photos: [lb("col-stole"), lb("dir-c1")], swatch: ["#5a1f3a", "#efe7da", "#a77a8a"], place: [PLACEMENT.fabrics, PLACEMENT.weave], blurb: "Versatile printed stole that completes the look." },
-  { name: "Charcoal Wrap Set", price: 27000, garment: "co-ord-set", photos: [lb("street-2"), lb("dir-b2")], cutout: lb("cut/street-2"), swatch: ["#5d5d5f", "#9aa0a6", "#141114"], place: [PLACEMENT.devotion], blurb: "Draped knit wrap over pleated wide trousers." },
-  { name: "Cocoa Harem Set", price: 25500, garment: "co-ord-set", photos: [lb("street-3"), lb("dir-b3")], cutout: lb("cut/street-3"), swatch: ["#5b3a26", "#c9a24a", "#2b1b12"], place: [PLACEMENT.motion], blurb: "Chocolate tunic and harem trousers with a wooden bead necklace." },
+  { name: "The Modern Abaya", fabric: lb("abaya-d2"), price: 36000, garment: "abaya", photos: [lb("col-abaya"), lb("dir-a4")], cutout: lb("cut/col-abaya"), swatch: ["#141114", "#d8c7ac", "#5d5559"], place: [PLACEMENT.motion, PLACEMENT.collection], blurb: "Minimal black abaya with tonal floral embroidery down one side." },
+  { name: "Linen Co-ord Set", fabric: lb("beige-d2"), price: 24000, garment: "co-ord-set", photos: [lb("col-coord"), lb("dir-a2")], cutout: lb("cut/col-coord"), swatch: ["#cbb79c", "#efe7da", "#8a7560"], place: [PLACEMENT.fabrics, PLACEMENT.devotion], blurb: "Relaxed linen shirt and wide trousers for everyday ease." },
+  { name: "The Statement Jacket", fabric: lb("abaya-d1"), price: 46000, garment: "jacket", photos: [lb("col-jacket"), lb("dir-c2")], cutout: lb("cut/col-jacket"), swatch: ["#5a1424", "#d9b36c", "#efe7da"], place: [PLACEMENT.motion, PLACEMENT.fabrics], blurb: "Wine overlay jacket with artisanal gold borders." },
+  { name: "Olive Kaftan", fabric: lb("olive-d2"), price: 29000, garment: "kaftan", photos: [lb("col-kaftan"), lb("dir-a3")], cutout: lb("cut/col-kaftan"), swatch: ["#6b6a35", "#c9a24a", "#2b2a17"], place: [PLACEMENT.drape, PLACEMENT.weave], blurb: "Fluid olive kaftan with fine running-stitch lines." },
+  { name: "Modest Hoodie Set", fabric: lb("beige-d2"), price: 18500, garment: "co-ord-set", photos: [lb("col-hoodie"), lb("street-4")], cutout: lb("cut/col-hoodie"), swatch: ["#6e625a", "#1f2a44", "#141114"], place: [PLACEMENT.motion], blurb: "Contemporary comfort: oversized hoodie with cargo wide-legs.", colorways: [{ name: "Taupe", hex: "#6e625a", photos: [lb("col-hoodie")] }, { name: "Navy", hex: "#1f2a44", photos: [lb("street-4")] }, { name: "Black", hex: "#141114", photos: [lb("street-1")] }] },
+  { name: "Signature Stole", fabric: lb("mauve-d3"), price: 9500, garment: "stole", photos: [lb("col-stole"), lb("dir-c1")], swatch: ["#5a1f3a", "#efe7da", "#a77a8a"], place: [PLACEMENT.fabrics, PLACEMENT.weave], blurb: "Versatile printed stole that completes the look." },
+  { name: "Charcoal Wrap Set", fabric: lb("gown-d2"), price: 27000, garment: "co-ord-set", photos: [lb("street-2"), lb("dir-b2")], cutout: lb("cut/street-2"), swatch: ["#5d5d5f", "#9aa0a6", "#141114"], place: [PLACEMENT.devotion], blurb: "Draped knit wrap over pleated wide trousers." },
+  { name: "Cocoa Harem Set", fabric: lb("abaya-d2"), price: 25500, garment: "co-ord-set", photos: [lb("street-3"), lb("dir-b3")], cutout: lb("cut/street-3"), swatch: ["#5b3a26", "#c9a24a", "#2b1b12"], place: [PLACEMENT.motion], blurb: "Chocolate tunic and harem trousers with a wooden bead necklace." },
 ];
 
 const products: Product[] = seeds.map((s, i) => {
@@ -319,6 +322,12 @@ const products: Product[] = seeds.map((s, i) => {
       hex: c.hex,
       images: c.photos.map((p, k) => img(p, `${s.name}, ${c.name}${k ? " back" : ""}`)),
     })),
+    garment: {
+      kind: garmentKindOf([garment.slug]),
+      fabric: img(s.fabric ?? s.photos[2] ?? STOCK.fabric[i % STOCK.fabric.length], `${s.name} fabric`, 800),
+      front: null,
+      back: null,
+    },
   };
 });
 

@@ -14,6 +14,7 @@ import type {
   ProductImage,
 } from "./types";
 import { PARENT } from "./types";
+import { garmentKindOf } from "./catalog";
 
 export const TAGS = { products: "products", home: "home" } as const;
 
@@ -85,7 +86,12 @@ function toProduct(p: StoreProduct, byId: Map<number, StoreProduct>): Product {
   const name = stripHtml(p.name);
   const all = p.images.map((i): ProductImage => ({ src: i.src, alt: i.alt || name }));
   const isCutout = (i: ProductImage) => /cutout/i.test(i.alt) || /cutout/i.test(i.src);
-  const images = all.filter((i) => !isCutout(i));
+  const tagged = (re: RegExp) => all.find((i) => re.test(i.alt) || re.test(i.src)) ?? null;
+  const hangerFront = tagged(/hanger[\s_-]*front/i);
+  const hangerBack = tagged(/hanger[\s_-]*back/i);
+  const fabric = tagged(/fabric/i);
+  const special = new Set([hangerFront, hangerBack, fabric].filter(Boolean));
+  const images = all.filter((i) => !isCutout(i) && !special.has(i));
   // "Colour" terms like "Rose #d4887f"; gallery is ordered front, back per colour.
   const colorways = attr(p, /^colou?r$/i).map((term, k) => ({
     name: term.replace(HEX, "").trim() || `Colour ${k + 1}`,
@@ -109,6 +115,12 @@ function toProduct(p: StoreProduct, byId: Map<number, StoreProduct>): Product {
     pieces,
     cutout: all.find(isCutout) ?? null,
     colorways: colorways.length > 1 ? colorways : [],
+    garment: {
+      kind: garmentKindOf(p.categories.map((c) => c.slug)),
+      fabric: fabric ?? images[2] ?? images[0] ?? null,
+      front: hangerFront,
+      back: hangerBack,
+    },
   };
 }
 
