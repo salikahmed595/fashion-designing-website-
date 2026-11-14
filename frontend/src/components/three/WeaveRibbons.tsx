@@ -248,7 +248,7 @@ export default function WeaveRibbons({ slots, braided }: { slots: RibbonSpec[]; 
         onCreated={() => setReady(true)}
         className={`transition-opacity duration-1000 ease-out ${ready ? "opacity-100" : "opacity-0"}`}
         style={{ pointerEvents: "none" }}
-        dpr={[1, 1.75]}
+        dpr={[1, 1.25]}
         camera={{ position: [0, 0, 7], fov: 35 }}
         gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
         aria-hidden

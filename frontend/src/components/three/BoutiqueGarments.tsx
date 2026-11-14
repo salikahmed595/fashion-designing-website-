@@ -9,6 +9,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { HALL } from "./boutiqueLayout";
+import type { Quality } from "./quality";
 import { GARMENT_CELLS, garmentAtlas, rng } from "./boutiqueTextures";
 
 const vertex = /* glsl */ `
@@ -53,7 +54,8 @@ const fragment = /* glsl */ `
   }
 `;
 
-export default function BoutiqueGarments({ mobile }: { mobile: boolean }) {
+export default function BoutiqueGarments({ quality }: { quality: Quality }) {
+  const low = quality === "low";
   const mesh = useRef<THREE.InstancedMesh>(null);
   const mat = useRef<THREE.ShaderMaterial>(null);
   const map = useMemo(() => garmentAtlas(), []);
@@ -65,7 +67,7 @@ export default function BoutiqueGarments({ mobile }: { mobile: boolean }) {
       for (const side of [-1, 1] as const) {
         const closet = (n + (side > 0 ? 1 : 0)) % 2 === 1;
         if (closet) {
-          const count = mobile ? 5 : 8;
+          const count = low ? 4 : 8;
           for (let k = 0; k < count; k++) {
             const zz = z + 0.82 - (k / (count - 1)) * 1.64;
             items.push({
@@ -78,7 +80,7 @@ export default function BoutiqueGarments({ mobile }: { mobile: boolean }) {
             });
           }
         } else {
-          const count = mobile ? 4 : 6;
+          const count = low ? 3 : 6;
           for (let k = 0; k < count; k++) {
             const zz = z - 0.78 + (k / (count - 1)) * 1.56;
             items.push({
@@ -94,7 +96,7 @@ export default function BoutiqueGarments({ mobile }: { mobile: boolean }) {
       }
     });
     return items;
-  }, [mobile]);
+  }, [low]);
 
   const geometry = useMemo(() => {
     const g = new THREE.PlaneGeometry(1, 1, 1, 14);

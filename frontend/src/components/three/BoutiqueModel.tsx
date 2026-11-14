@@ -19,7 +19,8 @@ import { useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
-import { BEATS, HALL, HIP_V, KNEE_V, MODEL_H, SOFA, clamp01, remap } from "./boutiqueLayout";
+import { HIP_V, KNEE_V, MODEL_H, SOFA, clamp01, remap } from "./boutiqueLayout";
+import { newWalkState, smooth, stepWalk, walkPath, type WalkState } from "./boutiqueWalk";
 
 const vertex = /* glsl */ `
   uniform float uH;
@@ -96,7 +97,10 @@ const vertex = /* glsl */ `
 
 const fragment = /* glsl */ `
   uniform sampler2D uMap;
+  uniform vec2 uTexel;
   uniform vec3 uTint;
+  uniform vec3 uAmbient;
+  uniform vec3 uRim;
   uniform float uOpacity;
   uniform float uKey;
   varying vec2 vUv;
@@ -104,15 +108,26 @@ const fragment = /* glsl */ `
   varying float vTurn;
   #include <fog_pars_fragment>
 
+  float alphaAt(vec2 o) { return texture2D(uMap, vUv + o * uTexel).a; }
+
   void main() {
     vec4 tex = texture2D(uMap, vUv);
-    float a = tex.a * uOpacity;
+    // Softened silhouette (a touch of depth blur at the cut-out edge).
+    float soft = (tex.a * 2.0 + alphaAt(vec2(1.5, 0.0)) + alphaAt(vec2(-1.5, 0.0))
+               + alphaAt(vec2(0.0, 1.5)) + alphaAt(vec2(0.0, -1.5))) / 6.0;
+    float a = soft * uOpacity;
     if (a < 0.04) discard;
-    // Room light: darker toward the floor, the key light warming her as she nears
-    // the sofa; parts turning away from the camera darken slightly.
+    // How close we are to the outline (wider taps) -> rim light.
+    float wide = (alphaAt(vec2(6.0, 0.0)) + alphaAt(vec2(-6.0, 0.0)) + alphaAt(vec2(0.0, 6.0)) + alphaAt(vec2(0.0, -6.0))) * 0.25;
+    float edge = 1.0 - smoothstep(0.55, 0.98, wide);
+    // Room light: darker toward the floor, warmer as she nears the key light;
+    // parts turning away darken; the teal room tints the shadows.
     float light = mix(0.74, 1.04, smoothstep(0.0, 1.5, vHeight)) * (1.0 - vTurn * 3.0);
-    vec3 col = tex.rgb * uTint * light * mix(0.85, 1.05, uKey);
-    col += tex.rgb * vec3(1.0, 0.7, 0.45) * uKey * 0.06;
+    vec3 col = tex.rgb * uTint * light * mix(0.85, 1.03, uKey);
+    float lum = dot(col, vec3(0.299, 0.587, 0.114));
+    col = mix(col, col * uAmbient, 0.22 * (1.0 - smoothstep(0.1, 0.6, lum)));
+    col += tex.rgb * vec3(1.0, 0.7, 0.45) * uKey * 0.05;
+    col += uRim * edge * (0.25 + 0.35 * uKey) * smoothstep(0.3, 1.2, vHeight);
     gl_FragColor = vec4(col, a);
     #include <colorspace_fragment>
     #include <fog_fragment>
@@ -139,27 +154,30 @@ type Props = {
   progress: RefObject<number>;
   shadow: THREE.Texture;
   still: boolean;
+  /** Cast a real shadow-map shadow (medium/high tiers). */
+  castShadows: boolean;
 };
 
-const WALK_SECONDS = 5.2;
-const CYCLE_SECONDS = 1.1; // two steps
-const smooth = (t: number) => t * t * (3 - 2 * t);
-
-export default function BoutiqueModel({ url, side, index, progress, shadow, still }: Props) {
+export default function BoutiqueModel({ url, side, index, progress, shadow, still, castShadows }: Props) {
   const map = useTexture(url, (t) => {
     const tex = Array.isArray(t) ? t[0] : t;
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
+    tex.anisotropy = 4;
   });
   const group = useRef<THREE.Group>(null);
   const blob = useRef<THREE.Mesh>(null);
+  const seatBlob = useRef<THREE.Mesh>(null);
   const mat = useRef<THREE.ShaderMaterial>(null);
   // Animation state (time-driven, chasing the scroll).
-  const state = useRef({ walk: 0, turn: 0, sit: 0, gait: 0, phase: index * 1.7 });
+  const state = useRef<WalkState>(newWalkState(index));
 
   const aspect = useMemo(() => {
     const img = map.image as { width?: number; height?: number } | undefined;
     return img?.width && img?.height ? img.width / img.height : 0.4;
+  }, [map]);
+  const texel = useMemo(() => {
+    const img = map.image as { width?: number; height?: number } | undefined;
+    return new THREE.Vector2(1 / (img?.width || 512), 1 / (img?.height || 1280));
   }, [map]);
 
   const uniforms = useMemo(
@@ -168,6 +186,7 @@ export default function BoutiqueModel({ url, side, index, progress, shadow, stil
         THREE.UniformsLib.fog,
         {
           uMap: { value: null },
+          uTexel: { value: new THREE.Vector2(1 / 512, 1 / 1280) },
           uH: { value: MODEL_H },
           uW: { value: MODEL_H * 0.4 },
           uKnee: { value: KNEE_V },
@@ -177,6 +196,8 @@ export default function BoutiqueModel({ url, side, index, progress, shadow, stil
           uPhase: { value: 0 },
           uGait: { value: 0 },
           uTint: { value: new THREE.Color("#fff3e8") },
+          uAmbient: { value: new THREE.Color("#7fc7bb") },
+          uRim: { value: new THREE.Color("#ffd8b0") },
           uOpacity: { value: 0 },
           uKey: { value: 0 },
         },
@@ -188,65 +209,18 @@ export default function BoutiqueModel({ url, side, index, progress, shadow, stil
     [uniforms],
   );
   const geometry = useMemo(() => new THREE.PlaneGeometry(1, 1, 12, 72), []);
-
-  const start = useMemo(() => new THREE.Vector3(side * (HALL.halfWidth + 0.3), 0, HALL.doorZ), [side]);
-  const end = useMemo(() => {
-    // Feet planted so the hip lands on the seat when the thigh folds.
-    const thigh = (HIP_V - KNEE_V) * MODEL_H;
-    return new THREE.Vector3(side * SOFA.seatX, 0, SOFA.hipZ + thigh * Math.sin(1.5));
-  }, [side]);
-  // A gentle curve: step out into the room, then arc in toward the seat.
-  const curve = useMemo(
-    () =>
-      new THREE.QuadraticBezierCurve3(
-        start,
-        new THREE.Vector3(side * (SOFA.seatX + 1.0), 0, (start.z + end.z) / 2 + 0.55),
-        end,
-      ),
-    [start, end, side],
-  );
+  const curve = useMemo(() => walkPath(side), [side]);
   const tmp = useMemo(() => new THREE.Vector3(), []);
   const ahead = useMemo(() => new THREE.Vector3(), []);
+  const hipBack = (HIP_V - KNEE_V) * MODEL_H * Math.sin(1.5);
 
   useFrame(({ clock }, rawDelta) => {
     const g = group.current;
     const m = mat.current;
     if (!g || !m) return;
     const dt = Math.min(rawDelta, 0.05);
-    const p = progress.current ?? 0;
     const st = state.current;
-    const [w0, w1] = BEATS.walk[index];
-    const [s0, s1] = BEATS.sit[index];
-    const scrollWalk = remap(p, w0, w1);
-
-    if (still) {
-      st.walk = 1;
-      st.turn = 1;
-      st.sit = 1;
-      st.gait = 0;
-    } else {
-      const prev = st.walk;
-      if (p < w0) {
-        // Before her window: rewind toward the doorway.
-        st.walk += (0 - st.walk) * Math.min(1, dt * 5);
-      } else {
-        // In or past her window: never behind the scroll, and keep walking on time.
-        st.walk = Math.min(1, Math.max(st.walk, scrollWalk) + dt / WALK_SECONDS);
-      }
-      const speed = Math.abs(st.walk - prev) / Math.max(dt, 1e-4) * WALK_SECONDS;
-      const moving = st.walk > 0.002 && st.walk < 0.999 ? Math.min(1, speed) : 0;
-      st.gait += (moving - st.gait) * Math.min(1, dt * 3.2); // ease in/out of the stride
-      st.phase += dt * ((Math.PI * 2) / CYCLE_SECONDS) * (0.35 + 0.65 * st.gait) * (st.gait > 0.02 ? 1 : 0);
-      // Turn to face the camera once she has arrived.
-      const arrived = st.walk >= 0.999 ? 1 : 0;
-      st.turn += (arrived - st.turn) * Math.min(1, dt * 2.8);
-      // Sit once she has turned and her sit beat is reached; it then completes on time
-      // (faster if the scroll is already past the beat).
-      const sitTarget = st.turn > 0.9 && p >= s0 ? 1 : 0;
-      const rate = 1 / (1.3 - 0.6 * remap(p, s0, s1));
-      const ds = sitTarget - st.sit;
-      st.sit += Math.sign(ds) * Math.min(Math.abs(ds), dt * rate);
-    }
+    stepWalk(st, progress.current ?? 0, index, dt, still);
 
     // Path with soft starts and stops.
     const w = smooth(clamp01(st.walk));
@@ -264,6 +238,7 @@ export default function BoutiqueModel({ url, side, index, progress, shadow, stil
     const sit = smooth(clamp01(st.sit));
     const u = m.uniforms;
     u.uMap.value = map;
+    u.uTexel.value.copy(texel);
     u.uW.value = MODEL_H * aspect;
     u.uBend.value = sit * 1.5;
     u.uLean.value = -sit * 0.06;
@@ -278,6 +253,13 @@ export default function BoutiqueModel({ url, side, index, progress, shadow, stil
       bm.opacity = u.uOpacity.value * (0.6 - 0.2 * sit);
       blob.current.scale.set(MODEL_H * aspect * 0.9, 0.35 + sit * 0.1, 1);
     }
+    if (seatBlob.current) {
+      // Contact shadow on the seat cushion under her hips once seated.
+      const bm = seatBlob.current.material as THREE.MeshBasicMaterial;
+      bm.opacity = 0.7 * sit;
+      seatBlob.current.visible = sit > 0.01;
+      seatBlob.current.scale.set(MODEL_H * aspect * 0.85, 0.42, 1);
+    }
   });
 
   return (
@@ -286,7 +268,17 @@ export default function BoutiqueModel({ url, side, index, progress, shadow, stil
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial map={shadow} transparent depthWrite={false} opacity={0} />
       </mesh>
-      <mesh geometry={geometry} frustumCulled={false} renderOrder={2} castShadow customDepthMaterial={depthMaterial}>
+      <mesh ref={seatBlob} rotation={[-Math.PI / 2, 0, 0]} position={[0, SOFA.seatY + 0.006, -hipBack + 0.1]} renderOrder={1} visible={false}>
+        <planeGeometry args={[1, 1]} />
+        <meshBasicMaterial map={shadow} transparent depthWrite={false} opacity={0} />
+      </mesh>
+      <mesh
+        geometry={geometry}
+        frustumCulled={false}
+        renderOrder={2}
+        castShadow={castShadows}
+        customDepthMaterial={depthMaterial}
+      >
         <shaderMaterial
           ref={mat}
           uniforms={uniforms}

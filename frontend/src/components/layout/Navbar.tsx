@@ -41,8 +41,8 @@ export function Navbar({ items }: { items: HomeContent["nav"] }) {
         aria-label="Main"
         className={`mx-auto flex max-w-7xl items-center justify-between gap-3 rounded-full py-2 pr-2 pl-5 transition-all duration-500 ${
           light
-            ? "bg-white/5 text-white backdrop-blur-[2px]"
-            : "bg-white/85 text-ink shadow-[0_10px_40px_-15px_rgba(20,17,20,0.35)] backdrop-blur-md"
+            ? "bg-black/10 text-white"
+            : "bg-white/95 text-ink shadow-[0_10px_40px_-15px_rgba(20,17,20,0.35)]"
         }`}
       >
         <a href="#top" className="text-[15px]" aria-label="Anashion home">
@@ -103,7 +103,7 @@ export function Navbar({ items }: { items: HomeContent["nav"] }) {
       </nav>
 
       {menu && (
-        <ul id="mobile-menu" className="mx-auto mt-2 max-w-7xl rounded-3xl bg-white/95 p-3 text-ink shadow-lg backdrop-blur-md lg:hidden">
+        <ul id="mobile-menu" className="mx-auto mt-2 max-w-7xl rounded-3xl bg-white p-3 text-ink shadow-lg lg:hidden">
           {items.map((item) => (
             <li key={item.href}>
               <a href={item.href} onClick={() => setMenu(false)} className="block rounded-2xl px-4 py-3 font-medium hover:bg-mist">

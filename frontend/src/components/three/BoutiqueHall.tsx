@@ -11,6 +11,8 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { MeshReflectorMaterial } from "@react-three/drei";
 import { HALL } from "./boutiqueLayout";
+import type { Quality } from "./quality";
+import { surface } from "./boutiqueMaterials";
 import { beadGeometry, frameGeometry, wallGeometry, type ArchSpec } from "./boutiqueShapes";
 import {
   aoStripTexture,
@@ -31,23 +33,32 @@ const MID_Z = (HALL.entranceZ + HALL.endZ) / 2;
 /** Pilaster centres between niches (for wainscot frames and track spot aim). */
 const PILASTERS = [13.8, 11.0, 8.2, 5.4, 2.1];
 
-export function makeHallMaterials() {
+/** Hall materials. `rich` (medium/high) is physically based with clearcoat; low uses Lambert/Phong. */
+function makeHallMaterials(rich: boolean, tex: Tex) {
+  const lacquer = (color: string, roughness: number) =>
+    rich
+      ? new THREE.MeshPhysicalMaterial({ color, roughness, clearcoat: 0.55, clearcoatRoughness: 0.28 })
+      : new THREE.MeshLambertMaterial({ color });
   return {
-    wall: new THREE.MeshPhysicalMaterial({ color: "#0f4c48", roughness: 0.42, clearcoat: 0.55, clearcoatRoughness: 0.28 }),
-    moulding: new THREE.MeshPhysicalMaterial({ color: "#16625c", roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.25 }),
-    brass: new THREE.MeshStandardMaterial({ color: "#d4ac58", metalness: 1, roughness: 0.28 }),
-    brushed: new THREE.MeshStandardMaterial({ color: "#c79f4e", metalness: 1, roughness: 0.42 }),
-    black: new THREE.MeshStandardMaterial({ color: "#151515", metalness: 0.6, roughness: 0.45 }),
-    ceiling: new THREE.MeshStandardMaterial({ color: "#0b3936", roughness: 0.85 }),
+    nicheBack: surface(rich, { map: tex.nicheBack, roughness: 0.75 }),
+    doorGlow: surface(rich, { color: "#1a0d0d", emissive: "#f4c8a6", emissiveIntensity: 1.1 }),
+    floorLow: surface(rich, { map: tex.marble, roughness: 0.22 }),
+    runner: surface(rich, { map: tex.runner, roughness: 0.95 }),
+    jaali: surface(rich, { color: "#000000", emissive: "#ffffff", emissiveMap: tex.jaali, emissiveIntensity: 0.9 }),
+    wall: lacquer("#0f4c48", 0.42),
+    moulding: lacquer("#16625c", 0.38),
+    brass: surface(rich, { color: "#d4ac58", metalness: 1, roughness: 0.28 }),
+    brushed: surface(rich, { color: "#c79f4e", metalness: 1, roughness: 0.42 }),
+    black: surface(rich, { color: "#151515", metalness: 0.6, roughness: 0.45 }),
+    ceiling: surface(rich, { color: "#0b3936", roughness: 0.85 }),
     bulb: new THREE.MeshBasicMaterial({ color: new THREE.Color("#fff1d6").multiplyScalar(6), toneMapped: false }),
     lens: new THREE.MeshBasicMaterial({ color: new THREE.Color("#ffe6bf").multiplyScalar(3.5), toneMapped: false }),
-    glass: new THREE.MeshPhysicalMaterial({
+    glass: surface(rich, {
       color: "#fff3df",
       roughness: 0.06,
       metalness: 0,
       transparent: true,
       opacity: 0.32,
-      clearcoat: 1,
       emissive: "#ffcf8f",
       emissiveIntensity: 0.25,
       depthWrite: false,
@@ -91,7 +102,7 @@ function SideWall({ side, m, tex }: { side: -1 | 1; m: Mats; tex: Tex }) {
           {/* Niche back (baked AO) and the track spot's light pool on it. */}
           <mesh position={[x - side * 0.004, HALL.niche.base + nicheH / 2, z]} rotation={[0, inward, 0]} receiveShadow>
             <planeGeometry args={[HALL.niche.w + 0.2, nicheH]} />
-            <meshStandardMaterial map={tex.nicheBack} roughness={0.75} />
+            <primitive object={m.nicheBack} attach="material" />
           </mesh>
           <mesh position={[x - side * 0.012, HALL.niche.base + nicheH * 0.55, z]} rotation={[0, inward, 0]}>
             <planeGeometry args={[HALL.niche.w * 1.05, nicheH * 1.05]} />
@@ -110,7 +121,7 @@ function SideWall({ side, m, tex }: { side: -1 | 1; m: Mats; tex: Tex }) {
       {/* Fitting-room glow through the doorway. */}
       <mesh position={[x + side * 0.3, 1.6, HALL.doorZ]} rotation={[0, inward, 0]}>
         <planeGeometry args={[HALL.door.w + 0.4, 3.2]} />
-        <meshStandardMaterial color="#1a0d0d" emissive="#f4c8a6" emissiveIntensity={1.1} />
+        <primitive object={m.doorGlow} attach="material" />
       </mesh>
       {/* Skirting (split around the doorway) and cornice. */}
       {[
@@ -280,13 +291,16 @@ function Pendant({ z, m, glow }: { z: number; m: Mats; glow: THREE.Texture }) {
 }
 
 /** Crystal chandelier: three brass rings dripping instanced crystals, candle bulbs. */
-function Chandelier({ m, glow, mobile }: { m: Mats; glow: THREE.Texture; mobile: boolean }) {
+function Chandelier({ m, glow, crystalsOn }: { m: Mats; glow: THREE.Texture; crystalsOn: boolean }) {
   const crystals = useRef<THREE.InstancedMesh>(null);
-  const tiers = useMemo(() => [
-    { r: 0.62, y: 0, n: mobile ? 18 : 30 },
-    { r: 0.44, y: 0.26, n: mobile ? 14 : 22 },
-    { r: 0.26, y: 0.5, n: mobile ? 10 : 14 },
-  ], [mobile]);
+  const tiers = useMemo(
+    () => [
+      { r: 0.62, y: 0, n: 30 },
+      { r: 0.44, y: 0.26, n: 22 },
+      { r: 0.26, y: 0.5, n: 14 },
+    ],
+    [],
+  );
   const count = tiers.reduce((a, t) => a + t.n * 2, 0) + 12;
   useLayoutEffect(() => {
     const mesh = crystals.current;
@@ -315,7 +329,7 @@ function Chandelier({ m, glow, mobile }: { m: Mats; glow: THREE.Texture; mobile:
     }
     mesh.count = i;
     mesh.instanceMatrix.needsUpdate = true;
-  }, [tiers]);
+  }, [tiers, crystalsOn]);
   return (
     <group position={[0, 3.0, HALL.chandelierZ]}>
       <mesh position={[0, 0.75, 0]} material={m.brass}>
@@ -333,18 +347,21 @@ function Chandelier({ m, glow, mobile }: { m: Mats; glow: THREE.Texture; mobile:
           ))}
         </group>
       ))}
-      <instancedMesh ref={crystals} args={[undefined, m.crystal, count]}>
-        <octahedronGeometry args={[1, 0]} />
-      </instancedMesh>
-      <sprite scale={[2.6, 2.6, 1]} position={[0, 0.2, 0]}>
-        <spriteMaterial map={glow} color="#ffd29a" transparent opacity={0.3} depthWrite={false} blending={THREE.AdditiveBlending} />
+      {crystalsOn && (
+        <instancedMesh ref={crystals} args={[undefined, m.crystal, count]}>
+          <octahedronGeometry args={[1, 0]} />
+        </instancedMesh>
+      )}
+      {/* Without crystals (low tier) a stronger sprite halo stands in for the sparkle. */}
+      <sprite scale={crystalsOn ? [2.6, 2.6, 1] : [3.2, 3.2, 1]} position={[0, 0.2, 0]}>
+        <spriteMaterial map={glow} color="#ffd29a" transparent opacity={crystalsOn ? 0.3 : 0.5} depthWrite={false} blending={THREE.AdditiveBlending} />
       </sprite>
     </group>
   );
 }
 
-function makeTextures(mobile: boolean) {
-  const marble = marbleTexture(mobile ? 512 : 1024);
+function makeTextures(small: boolean) {
+  const marble = marbleTexture(small ? 512 : 1024);
   marble.repeat.set((HALL.halfWidth * 2) / 2.4, LEN / 2.4);
   const runner = rugTexture(256, 1024, true);
   runner.repeat.set(1, 4);
@@ -360,9 +377,10 @@ function makeTextures(mobile: boolean) {
 }
 type Tex = ReturnType<typeof makeTextures>;
 
-export default function BoutiqueHall({ mobile }: { mobile: boolean }) {
-  const tex = useMemo(() => makeTextures(mobile), [mobile]);
-  const m = useMemo(() => makeHallMaterials(), []);
+export default function BoutiqueHall({ quality }: { quality: Quality }) {
+  const low = quality === "low";
+  const tex = useMemo(() => makeTextures(low), [low]);
+  const m = useMemo(() => makeHallMaterials(!low, tex), [low, tex]);
   const endWall = useMemo(
     () => wallGeometry(-HALL.halfWidth - 0.01, HALL.halfWidth + 0.01, HALL.height, [{ u: 0, arch: END }], 0.7),
     [],
@@ -372,16 +390,16 @@ export default function BoutiqueHall({ mobile }: { mobile: boolean }) {
 
   return (
     <group>
-      {/* Polished white marble with a blurred real reflection (plain on mobile). */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, MID_Z]} receiveShadow>
+      {/* White marble: a blurred real reflection on medium/high; static on low. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, MID_Z]} receiveShadow={!low}>
         <planeGeometry args={[HALL.halfWidth * 2 + 0.1, LEN]} />
-        {mobile ? (
-          <meshStandardMaterial map={tex.marble} roughness={0.2} />
+        {low ? (
+          <primitive object={m.floorLow} attach="material" />
         ) : (
           <MeshReflectorMaterial
             map={tex.marble}
-            resolution={512}
-            blur={[260, 80]}
+            resolution={quality === "high" ? 512 : 256}
+            blur={quality === "high" ? [260, 80] : [120, 40]}
             mixBlur={0.9}
             mixStrength={2.2}
             mixContrast={1}
@@ -395,6 +413,16 @@ export default function BoutiqueHall({ mobile }: { mobile: boolean }) {
           />
         )}
       </mesh>
+      {/* Low tier: fake reflections, soft light streaks under the lights and the jaali. */}
+      {low &&
+        [...HALL.pendants.map((z) => [0, z, 0.9, 2.2, 0.22] as const), [0, HALL.endZ + 1.6, 2.4, 3.4, 0.28] as const].map(
+          ([x, z, w, l, o]) => (
+            <mesh key={z} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.004, z]}>
+              <planeGeometry args={[w, l]} />
+              <meshBasicMaterial map={tex.glow} color="#ffd9a8" transparent opacity={o} blending={THREE.AdditiveBlending} depthWrite={false} />
+            </mesh>
+          ),
+        )}
       {/* Baked AO where the floor meets the walls. */}
       {[-1, 1].map((s) => (
         <mesh key={s} rotation={[-Math.PI / 2, 0, s * (Math.PI / 2)]} position={[s * (HALL.halfWidth - 0.35), 0.003, MID_Z]}>
@@ -408,9 +436,9 @@ export default function BoutiqueHall({ mobile }: { mobile: boolean }) {
           <boxGeometry args={[0.025, 0.004, HALL.entranceZ - 1.9]} />
         </mesh>
       ))}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, (14.5 + 2.2) / 2]} receiveShadow>
-        <planeGeometry args={[1.2, 14.5 - 2.2]} />
-        <meshStandardMaterial map={tex.runner} roughness={0.95} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, (14.5 + 3.4) / 2]} receiveShadow>
+        <planeGeometry args={[1.2, 14.5 - 3.4]} />
+        <primitive object={m.runner} attach="material" />
       </mesh>
 
       {/* Ceiling. */}
@@ -442,11 +470,11 @@ export default function BoutiqueHall({ mobile }: { mobile: boolean }) {
       <mesh geometry={endBead} material={m.brass} position={[0, 0, HALL.endZ + 0.012]} />
       <mesh position={[0, 2.0, HALL.endZ - 0.69]} receiveShadow>
         <planeGeometry args={[3.8, 4.0]} />
-        <meshStandardMaterial map={tex.nicheBack} roughness={0.7} />
+        <primitive object={m.nicheBack} attach="material" />
       </mesh>
       <mesh position={[0, 2.55, HALL.endZ - 0.66]}>
         <planeGeometry args={[2.6, 1.9]} />
-        <meshStandardMaterial color="#000000" emissive="#ffffff" emissiveMap={tex.jaali} emissiveIntensity={0.9} />
+        <primitive object={m.jaali} attach="material" />
       </mesh>
       {/* Wall sconces either side of the arch. */}
       {[-2.35, 2.35].map((x) => (
@@ -469,7 +497,7 @@ export default function BoutiqueHall({ mobile }: { mobile: boolean }) {
       {HALL.pendants.map((z) => (
         <Pendant key={z} z={z} m={m} glow={tex.glow} />
       ))}
-      <Chandelier m={m} glow={tex.glow} mobile={mobile} />
+      <Chandelier m={m} glow={tex.glow} crystalsOn={!low} />
     </group>
   );
 }

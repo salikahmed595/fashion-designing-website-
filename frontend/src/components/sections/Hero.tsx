@@ -26,10 +26,17 @@ export function Hero({
   hero,
   heritage,
   marquee,
+  riggedModels,
 }: {
   hero: HomeContent["hero"];
   heritage: HomeContent["heritage"];
   marquee: HomeContent["marquee"];
+  /**
+   * Optional rigged GLB URLs (e.g. "/models/model-1.glb"), computed by the page
+   * from what exists in public/models. `hero.models` entries ending in .glb
+   * count too. Used on medium/high quality only; cut-outs remain the fallback.
+   */
+  riggedModels?: string[];
 }) {
   const root = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -38,7 +45,10 @@ export function Hero({
   const [glReady, setGlReady] = useState(false);
   const [glFailed, setGlFailed] = useState(false);
   const hasVideo = typeof hero.video === "string" && hero.video.trim() !== "";
-  const models = (hero.models ?? []).filter(Boolean).slice(0, 2);
+  const isGlb = (u: string) => /\.glb(\?|$)/i.test(u);
+  const allModels = (hero.models ?? []).filter(Boolean);
+  const models = allModels.filter((u) => !isGlb(u)).slice(0, 2);
+  const rigged = (riggedModels?.length ? riggedModels : allModels.filter(isGlb)).slice(0, 2);
 
   useGSAP(
     () => {
@@ -175,6 +185,7 @@ export function Hero({
               progress={progress}
               mode={hasVideo ? "curtain" : "hall"}
               models={models}
+              rigged={rigged}
               onReady={() => setGlReady(true)}
             />
           </WebGLBoundary>
@@ -186,7 +197,8 @@ export function Hero({
         {/* Readability: soft gradient behind the copy, bottom-left. */}
         <div data-shade className="pointer-events-none absolute inset-0 z-20 opacity-0">
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
-          <div className="absolute inset-0 bg-[radial-gradient(90%_70%_at_0%_100%,rgba(26,8,12,0.75),transparent_70%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(90%_70%_at_0%_100%,rgba(26,8,12,0.8),transparent_70%)]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent sm:via-transparent" />
         </div>
 
         <div className="pointer-events-none relative z-30 mx-auto flex h-full max-w-7xl flex-col justify-end px-4 pb-14 text-white sm:px-6 sm:pb-20">

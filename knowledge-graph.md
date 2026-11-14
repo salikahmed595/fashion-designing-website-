@@ -59,18 +59,27 @@ Legend: ✅ verified · 🟡 proposed/unverified · ❓ open question
   - Rail: clothes-only viewer (owner chose drawn garments in real fabrics). `rail/GarmentArt.tsx` draws 8 garment kinds as SVG filled with lookbook fabric crops, front/back, colour tint. `rail/SwingTags.tsx` hanging colour tags. FRONT|BACK flip; QuickView kept for model photos. Real hanger photos (`garment.front/back`) replace the art when uploaded
   - Data: `Product.garment` (`kind`, `fabric`, `front`, `back`), `garmentKindOf()` in `lib/catalog.ts`
   - New deps: `@react-three/postprocessing`, `postprocessing`
+- [x] Round 4 (2026-11-14):
+  - **Performance:** `three/quality.ts` picks low/medium/high (Intel HD/UHD → low: no post-processing, no shadow maps, Lambert/Phong materials, DPR 1, 30fps cap, half the garments). The hero renders 0 frames off-screen or in a hidden tab. Measured low ≈ 6–7 ms GPU per frame on an HD 630 (pane). No backdrop-blur on the fixed navbar/ticker; Weave DPR ≤ 1.25; `OffscreenPauser` pauses CSS animations off-screen. Override with `?quality=low|medium|high`
+  - **Hero choreography** after owner refs 28–30: models enter from the near left/right, walk in and sit on a foreground settee. Shared gait in `boutiqueWalk.ts`
+  - **Rigged models:** `BoutiqueRiggedModel.tsx` loads `/models/model-1.glb` and `model-2.glb` (walk/sit/idle clips) on medium/high when present (`page.tsx` passes `riggedModels` via `existsSync`). Pipeline in `docs/3d-models.md`. No GLBs yet
+  - **Occasions:** all round arches, photos anchored at top, neutral fill (the pink dome fade is removed)
+  - **Rail:** streamer9-style front-facing wooden rack, Rack/Grid toggle, `rail/HangerModal.tsx` (show back, colour pills, sizes, add to bag, "See it on the model"). Shows only products with real/generated hanger photos once ≥4 exist; drawn `GarmentArt` until then
+  - **Generated-image slots:** `public/generated/looks/<slug>.*` (Try the Look models on white, blended with multiply) and `public/generated/rail/<slug>[-colour]-front|back.*` are auto-detected by `lib/mock.ts` (`gen()`); restart dev after adding. Prompts in `docs/image-prompts.md`
+- [ ] Owner generates the images (`docs/image-prompts.md`) and optionally the rigged GLBs or a hero video
 - [ ] Local WordPress install + end-to-end test
 - [ ] Client's real hanger photos (front/back) for each product
 - [ ] Bundle discount enforced at WooCommerce checkout
 - [ ] Product detail and category pages
 - [ ] Real contact/appointment details; bridal photos from the client
 
-## Test results (2026-11-14, round 3)
+## Test results (2026-11-14, round 4)
 - ✅ `npm run lint` and `npm run build` pass.
-- ✅ 1350×760: hero hallway → models walking → seated on the magenta sofa with headline; rail Kaftan filter → Gulbahar → Rose tag tints the art → BACK view; no console errors.
-- ✅ 375×812: no horizontal overflow; rail tags become chips under the garment.
-- 🟡 Not verified: real-laptop frame rate (pane ~47fps on Intel HD 630); fine visual detail (pane screenshots ~350px); hero reduced-motion, video and no-WebGL paths; rail drag and keyboard after the rebuild; touch devices.
+- ✅ 1350×760: hero ends with both models seated large in the foreground; Occasions heads intact with no pink; rail rack 762px tall; rail modal opens and closes on Escape; no console errors, including hydration.
+- ✅ Low tier in the pane: 30 renders/s at about 6–7 ms GPU; 0 frames when scrolled past the hero.
+- 🟡 Not verified: the owner's real machine; medium-tier numbers; GLB loading (no files); generated images (none yet); reduced-motion and video paths; rail drag and grid; mobile rail.
 - ❌ WordPress side untested.
+- Tip: dev mode (`npm run dev`) is much heavier than production. Judge speed with `npm run build && npm start`.
 
 ## Known issues, blockers & risks
 - Weave bundle price is discounted in the bag only; WC checkout will charge full price (fix: plugin applies a discount for `anashion_bundle` items).

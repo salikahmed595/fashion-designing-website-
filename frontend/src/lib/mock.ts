@@ -10,6 +10,8 @@ import type {
   ProductImage,
 } from "./types";
 import { PARENT, PLACEMENT } from "./types";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { garmentKindOf } from "./catalog";
 
 const u = (id: string, w = 1400) =>
@@ -73,6 +75,18 @@ const img = (id: string, alt: string, w?: number): ProductImage => ({
   src: id.startsWith("/") ? id : u(id, w),
   alt,
 });
+/**
+ * Generated placeholder images dropped into frontend/public/generated/
+ * (see docs/image-prompts.md). Picked up automatically if the file exists.
+ */
+const GEN_EXT = [".webp", ".png", ".jpg", ".jpeg"];
+function gen(base: string): string | null {
+  for (const ext of GEN_EXT) {
+    if (existsSync(join(process.cwd(), "public", "generated", base + ext))) return `/generated/${base}${ext}`;
+  }
+  return null;
+}
+
 /** Client lookbook crops (frontend/public/lookbook). */
 const lb = (name: string) => `/lookbook/${name}.webp`;
 
@@ -296,11 +310,18 @@ const seeds: Seed[] = [
   { name: "Cocoa Harem Set", fabric: lb("abaya-d2"), price: 25500, garment: "co-ord-set", photos: [lb("street-3"), lb("dir-b3")], cutout: lb("cut/street-3"), swatch: ["#5b3a26", "#c9a24a", "#2b1b12"], place: [PLACEMENT.motion], blurb: "Chocolate tunic and harem trousers with a wooden bead necklace." },
 ];
 
+const hangerShots = (base: string, name: string) => {
+  const f = gen(`rail/${base}-front`);
+  const b = gen(`rail/${base}-back`);
+  return { front: f ? img(f, `${name}, front`) : null, back: b ? img(b, `${name}, back`) : null };
+};
+
 const products: Product[] = seeds.map((s, i) => {
+  const slug = s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
   const garment = G[s.garment];
   return {
     id: i + 1,
-    slug: s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    slug,
     name: s.name,
     shortDescription: s.blurb,
     price: s.price,
@@ -316,17 +337,17 @@ const products: Product[] = seeds.map((s, i) => {
     sizes: ["XS", "S", "M", "L", "XL", "Custom"],
     swatch: s.swatch,
     pieces: s.pieces ?? [],
-    cutout: s.cutout ? img(s.cutout, `${s.name} on model`) : null,
+    cutout: ((c) => (c ? img(c, `${s.name} on model`) : null))(gen(`looks/${slug}`) ?? s.cutout),
     colorways: (s.colorways ?? []).map((c) => ({
       name: c.name,
       hex: c.hex,
       images: c.photos.map((p, k) => img(p, `${s.name}, ${c.name}${k ? " back" : ""}`)),
+      hanger: hangerShots(`${slug}-${c.name.toLowerCase()}`, `${s.name}, ${c.name}`),
     })),
     garment: {
       kind: garmentKindOf([garment.slug]),
       fabric: img(s.fabric ?? s.photos[2] ?? STOCK.fabric[i % STOCK.fabric.length], `${s.name} fabric`, 800),
-      front: null,
-      back: null,
+      ...hangerShots(slug, s.name),
     },
   };
 });

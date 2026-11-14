@@ -49,6 +49,7 @@ Persistent instructions for any AI agent working on this project. Keep this file
 - In `frontend/`: `npm run lint`, `npx tsc --noEmit`, `npm run build`. All must pass. (No unit test runner yet.)
 - Dev server: `npm run dev` (port 3000), or the `frontend` entry in `.claude/launch.json`.
 - Before calling a UI change done, check it in a browser at mobile (375px) and desktop widths. WebGL and GSAP don't animate in a hidden or background tab, so take screenshots with the page visible.
+- Performance: the owner's PC has an Intel HD 630. Keep `three/quality.ts` tiers, avoid `filter: blur`/`backdrop-filter` on fixed or many elements, and pause work off-screen. Test with `?quality=low`.
 - PHP plugin: `php -l wordpress/anashion-headless/anashion-headless.php`.
 
 ## Subagents & models

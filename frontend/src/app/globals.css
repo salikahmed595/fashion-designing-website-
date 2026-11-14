@@ -63,6 +63,12 @@ body {
   animation: marquee var(--marquee-duration, 40s) linear infinite;
 }
 
+/* Performance: pause looping CSS animations off-screen or in hidden tabs. */
+[data-offscreen] *,
+html[data-hidden] * {
+  animation-play-state: paused !important;
+}
+
 /* Lenis smooth scroll (package does not export its CSS) */
 html.lenis,
 html.lenis body {

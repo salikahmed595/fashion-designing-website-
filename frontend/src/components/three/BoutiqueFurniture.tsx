@@ -1,23 +1,22 @@
 "use client";
-// Furniture at the end of the boutique: a magenta channel-tufted velvet sofa
-// with a scalloped shell back (instanced capsule channels), two matching shell
-// armchairs, a green velvet pouf, a full-length arched gold mirror, a glass
+// Boutique furniture: a low magenta channel-tufted velvet settee in the
+// foreground (the models sit here, close to the camera, as in the reference
+// video), the matching scalloped shell-back sofa under the end arch with two
+// shell armchairs (all channels instanced), a green velvet pouf, a full-length arched gold mirror, a glass
 // display table with folded fabric, and the medallion rug. Velvet uses
-// MeshPhysicalMaterial sheen; everything casts soft shadows.
+// MeshPhysicalMaterial sheen on medium/high (Lambert/Phong on low); soft
+// baked contact blobs sit under every piece, and real shadows when enabled.
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBox } from "@react-three/drei";
-import { HALL, SOFA } from "./boutiqueLayout";
+import { END_SOFA_DZ, HALL, SOFA } from "./boutiqueLayout";
 import { rugTexture } from "./boutiqueTextures";
+import { surface } from "./boutiqueMaterials";
 
-const velvet = () =>
-  new THREE.MeshPhysicalMaterial({
-    color: "#8a0f3f",
-    roughness: 0.78,
-    sheen: 1,
-    sheenRoughness: 0.35,
-    sheenColor: new THREE.Color("#ff6fa8"),
-  });
+const velvet = (rich: boolean, color: string, sheenColor: string) =>
+  rich
+    ? new THREE.MeshPhysicalMaterial({ color, roughness: 0.78, sheen: 1, sheenRoughness: 0.35, sheenColor: new THREE.Color(sheenColor) })
+    : new THREE.MeshLambertMaterial({ color });
 
 type Channel = { x: number; z: number; h: number; rotY: number };
 
@@ -57,10 +56,19 @@ function chairChannels(): Channel[] {
   return out;
 }
 
-const CHAIRS = [
-  { x: -1.75, z: 1.05, rot: 2.1 },
-  { x: 1.75, z: 1.05, rot: -2.1 },
+/** The settee in the foreground (low back, the models sit here) and the sofa under the end arch. */
+const SOFAS = [
+  { dz: 0, back: 0.78 },
+  { dz: END_SOFA_DZ, back: 1 },
 ];
+
+/** Shell armchairs flanking the backdrop sofa, angled toward the room. */
+const CHAIRS = [
+  { x: -1.8, z: -0.75, rot: 0.5 },
+  { x: 1.8, z: -0.75, rot: -0.5 },
+];
+
+const POUF = [-2.25, 0.35] as const;
 
 function Legs({ pts, brass, y = 0.06, h = 0.12 }: { pts: [number, number][]; brass: THREE.Material; y?: number; h?: number }) {
   return (
@@ -74,32 +82,31 @@ function Legs({ pts, brass, y = 0.06, h = 0.12 }: { pts: [number, number][]; bra
   );
 }
 
-export default function BoutiqueFurniture() {
+export default function BoutiqueFurniture({ rich, blob }: { rich: boolean; blob: THREE.Texture }) {
   const mats = useMemo(
     () => ({
-      velvet: velvet(),
-      green: new THREE.MeshPhysicalMaterial({ color: "#0d5a45", roughness: 0.8, sheen: 1, sheenRoughness: 0.4, sheenColor: new THREE.Color("#5fe0b0") }),
-      mirror: new THREE.MeshStandardMaterial({ color: "#eef4f2", metalness: 1, roughness: 0.03, envMapIntensity: 3.2 }),
-      fabric: new THREE.MeshStandardMaterial({ color: "#e3187d", roughness: 0.8 }),
-      fabric2: new THREE.MeshStandardMaterial({ color: "#d9a441", roughness: 0.6, metalness: 0.2 }),
-      rug: new THREE.MeshStandardMaterial({ map: rugTexture(768, 512), roughness: 0.95 }),
-      brass: new THREE.MeshStandardMaterial({ color: "#d4ac58", metalness: 1, roughness: 0.28 }),
-      glass: new THREE.MeshPhysicalMaterial({
+      velvet: velvet(rich, "#8a0f3f", "#ff6fa8"),
+      green: velvet(rich, "#0d5a45", "#5fe0b0"),
+      mirror: surface(rich, { color: "#eef4f2", metalness: 1, roughness: 0.03, envMapIntensity: 3.2 }),
+      fabric: surface(rich, { color: "#e3187d", roughness: 0.8 }),
+      fabric2: surface(rich, { color: "#d9a441", roughness: 0.6, metalness: 0.2 }),
+      rug: surface(rich, { map: rugTexture(768, 512), roughness: 0.95 }),
+      brass: surface(rich, { color: "#d4ac58", metalness: 1, roughness: 0.28 }),
+      glass: surface(rich, {
         color: "#eef7f4",
         roughness: 0.04,
         transparent: true,
         opacity: 0.22,
-        clearcoat: 1,
         depthWrite: false,
       }),
     }),
-    [],
+    [rich],
   );
   const { brass, glass } = mats;
   const channels = useRef<THREE.InstancedMesh>(null);
   const sofaC = useMemo(() => sofaChannels(), []);
   const chairC = useMemo(() => chairChannels(), []);
-  const total = sofaC.length + chairC.length * CHAIRS.length;
+  const total = sofaC.length * SOFAS.length + chairC.length * CHAIRS.length;
   const capsule = useMemo(() => {
     const g = new THREE.CapsuleGeometry(0.125, 1, 6, 14);
     g.translate(0, 0.5, 0); // base at y = 0, unit body length
@@ -141,12 +148,14 @@ export default function BoutiqueFurniture() {
     const o = new THREE.Object3D();
     const base = SOFA.seatY - 0.13;
     let i = 0;
-    for (const c of sofaC) {
-      o.position.set(c.x, base, c.z);
-      o.rotation.set(-0.08, c.rotY, 0);
-      o.scale.set(1, c.h, 0.62);
-      o.updateMatrix();
-      m.setMatrixAt(i++, o.matrix);
+    for (const sofa of SOFAS) {
+      for (const c of sofaC) {
+        o.position.set(c.x, base, c.z + sofa.dz);
+        o.rotation.set(-0.08, c.rotY, 0);
+        o.scale.set(1, c.h * sofa.back, 0.62);
+        o.updateMatrix();
+        m.setMatrixAt(i++, o.matrix);
+      }
     }
     const parent = new THREE.Object3D();
     for (const ch of CHAIRS) {
@@ -171,34 +180,52 @@ export default function BoutiqueFurniture() {
 
   return (
     <group>
-      {/* Rug under the seating group. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, 0.05]} material={mats.rug} receiveShadow>
-        <planeGeometry args={[4.4, 3.0]} />
+      {/* Rugs: under the foreground settee and under the backdrop seating. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, cz + 0.35]} material={mats.rug} receiveShadow>
+        <planeGeometry args={[3.8, 2.4]} />
       </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, END_SOFA_DZ + cz + 0.4]} material={mats.rug} receiveShadow>
+        <planeGeometry args={[4.6, 2.6]} />
+      </mesh>
+      {/* Baked contact shadows under the sofas, chairs and pouf. */}
+      {[
+        ...SOFAS.map((f) => [0, cz + f.dz, SOFA.width + 0.6, 1.3, 0.75] as const),
+        ...CHAIRS.map((c) => [c.x, c.z, 1.1, 1.1, 0.6] as const),
+        [POUF[0], POUF[1], 0.9, 0.9, 0.55] as const,
+      ].map(([x, z, w, d, o]) => (
+        <mesh key={`${x},${z}`} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.009, z]} renderOrder={1}>
+          <planeGeometry args={[w, d]} />
+          <meshBasicMaterial map={blob} transparent opacity={o} depthWrite={false} />
+        </mesh>
+      ))}
 
-      {/* Sofa: plinth, seat cushion, shell back channels, brass legs. */}
-      <RoundedBox args={[SOFA.width, baseTop - 0.1, depth]} radius={0.06} smoothness={3} position={[0, 0.1 + (baseTop - 0.1) / 2, cz]} material={mats.velvet} castShadow receiveShadow />
-      <RoundedBox
-        args={[SOFA.width - 0.5, 0.15, depth - 0.24]}
-        radius={0.065}
-        smoothness={4}
-        position={[0, SOFA.seatY - 0.075, SOFA.seatFrontZ - (depth - 0.24) / 2 - 0.01]}
-        material={mats.velvet}
-        castShadow
-        receiveShadow
-      />
-      <mesh position={[0, 0.115, SOFA.seatFrontZ + 0.004]} material={brass}>
-        <boxGeometry args={[SOFA.width - 0.12, 0.02, 0.012]} />
-      </mesh>
-      <Legs
-        brass={brass}
-        pts={[
-          [-SOFA.width / 2 + 0.14, SOFA.seatFrontZ - 0.08],
-          [SOFA.width / 2 - 0.14, SOFA.seatFrontZ - 0.08],
-          [-SOFA.width / 2 + 0.14, SOFA.backZ + 0.1],
-          [SOFA.width / 2 - 0.14, SOFA.backZ + 0.1],
-        ]}
-      />
+      {/* Sofas: plinth, seat cushion, brass piping and legs (shell channels are instanced). */}
+      {SOFAS.map((f) => (
+        <group key={f.dz} position={[0, 0, f.dz]}>
+          <RoundedBox args={[SOFA.width, baseTop - 0.1, depth]} radius={0.06} smoothness={3} position={[0, 0.1 + (baseTop - 0.1) / 2, cz]} material={mats.velvet} castShadow receiveShadow />
+          <RoundedBox
+            args={[SOFA.width - 0.5, 0.15, depth - 0.24]}
+            radius={0.065}
+            smoothness={4}
+            position={[0, SOFA.seatY - 0.075, SOFA.seatFrontZ - (depth - 0.24) / 2 - 0.01]}
+            material={mats.velvet}
+            castShadow
+            receiveShadow
+          />
+          <mesh position={[0, 0.115, SOFA.seatFrontZ + 0.004]} material={brass}>
+            <boxGeometry args={[SOFA.width - 0.12, 0.02, 0.012]} />
+          </mesh>
+          <Legs
+            brass={brass}
+            pts={[
+              [-SOFA.width / 2 + 0.14, SOFA.seatFrontZ - 0.08],
+              [SOFA.width / 2 - 0.14, SOFA.seatFrontZ - 0.08],
+              [-SOFA.width / 2 + 0.14, SOFA.backZ + 0.1],
+              [SOFA.width / 2 - 0.14, SOFA.backZ + 0.1],
+            ]}
+          />
+        </group>
+      ))}
       <instancedMesh ref={channels} args={[capsule, mats.velvet, total]} castShadow receiveShadow />
 
       {/* Shell armchairs: seat discs on brass legs (channels are instanced above). */}
@@ -215,7 +242,7 @@ export default function BoutiqueFurniture() {
       ))}
 
       {/* Green velvet pouf with a brass band. */}
-      <group position={[-2.15, 0, 2.55]}>
+      <group position={[POUF[0], 0, POUF[1]]}>
         <mesh position={[0, 0.22, 0]} material={mats.green} castShadow receiveShadow>
           <cylinderGeometry args={[0.28, 0.28, 0.4, 32]} />
         </mesh>
@@ -235,7 +262,7 @@ export default function BoutiqueFurniture() {
       </group>
 
       {/* Glass display table with folded fabric, on the right. */}
-      <group position={[HALL.halfWidth - 0.5, 0, 2.1]}>
+      <group position={[HALL.halfWidth - 0.55, 0, 5.4]}>
         <mesh position={[0, 0.82, 0]} material={glass}>
           <boxGeometry args={[0.6, 0.02, 1.3]} />
         </mesh>

@@ -14,7 +14,7 @@ export function BottomTicker({ items }: { items: HomeContent["ticker"] }) {
     </ul>
   );
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 overflow-hidden bg-wine/95 py-1.5 text-[11px] backdrop-blur" role="marquee" aria-label="Highlights">
+    <div className="fixed inset-x-0 bottom-0 z-40 overflow-hidden bg-wine py-1.5 text-[11px]" role="marquee" aria-label="Highlights">
       <div className="animate-marquee flex w-max" style={{ ["--marquee-duration" as string]: "55s" }}>
         {row(false)}
         {row(true)}

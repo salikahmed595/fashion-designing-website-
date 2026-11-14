@@ -40,7 +40,13 @@ export type GarmentShot = {
 };
 
 /** A colour option. `images` = [front, back, ...] for that colour. */
-export type Colorway = { name: string; hex: string; images: ProductImage[] };
+export type Colorway = {
+  name: string;
+  hex: string;
+  images: ProductImage[];
+  /** Garment-only hanger shots for this colour (rail viewer), when available. */
+  hanger?: { front: ProductImage | null; back: ProductImage | null };
+};
 
 export type Product = {
   id: number;

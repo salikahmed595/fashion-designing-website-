@@ -20,15 +20,28 @@ export const HALL = {
   chandelierZ: 0.6,
 } as const;
 
+/**
+ * The foreground settee the models sit on (close to the camera, like the
+ * reference video's final shot). The original magenta sofa stays under the end
+ * arch as backdrop (offset by END_SOFA_DZ).
+ */
 export const SOFA = {
-  width: 2.3,
+  width: 2.1,
   seatY: 0.46,
-  backZ: -1.72,
-  seatFrontZ: -0.92,
+  backZ: 1.45,
+  seatFrontZ: 2.12,
   /** Where the seated models' hips rest. */
-  hipZ: -1.28,
+  hipZ: 1.82,
   /** Seat positions (x) for the two models. */
-  seatX: 0.52,
+  seatX: 0.5,
+} as const;
+/** Offset (z) from the settee to the backdrop sofa under the end arch. */
+export const END_SOFA_DZ = -1.72 - SOFA.backZ;
+
+/** Final camera framing for the seated shot (wide and narrow screens). */
+export const FINAL_CAM = {
+  wide: { x: -0.9, y: 1.12, z: 5.25, lookX: -0.78, lookY: 0.86, fov: 40 },
+  narrow: { x: 0, y: 1.0, z: 5.7, lookX: 0, lookY: 0.4, fov: 52 },
 } as const;
 
 /** Model height (m). The seat height equals the shin length so the feet stay planted. */
@@ -46,18 +59,19 @@ export const sineInOut = (t: number) => -(Math.cos(Math.PI * t) - 1) / 2;
 /** Scroll beats (fractions of the pinned scroll). */
 export const BEATS = {
   curtain: [0.0, 0.3] as const,
-  dolly: [0.03, 0.88] as const,
+  /** The camera arrives early; the models then walk in from the frame edges. */
+  dolly: [0.03, 0.5] as const,
   /** Scroll window in which each model walks (walking then also runs on time). */
   walk: [
-    [0.34, 0.64],
-    [0.38, 0.68],
+    [0.46, 0.72],
+    [0.49, 0.75],
   ] as const,
   /** Scroll window in which each model sits. */
   sit: [
-    [0.66, 0.82],
-    [0.7, 0.86],
+    [0.74, 0.86],
+    [0.77, 0.9],
   ] as const,
-  settle: [0.55, 0.94] as const,
+  settle: [0.32, 0.55] as const,
 };
 
 /** Curtain opening 0..1 for a given progress. */

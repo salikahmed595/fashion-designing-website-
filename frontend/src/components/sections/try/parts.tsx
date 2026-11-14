@@ -44,7 +44,7 @@ export function ModelVisual({
           const im = e.currentTarget;
           if (im.naturalHeight) onAspect?.(im.naturalWidth / im.naturalHeight);
         }}
-        className="object-contain object-bottom drop-shadow-[0_10px_14px_rgba(58,10,34,0.14)]"
+        className="object-contain object-bottom mix-blend-multiply"
       />
     );
   }

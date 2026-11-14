@@ -1,4 +1,7 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { OffscreenPauser } from "@/components/motion/OffscreenPauser";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { BottomTicker } from "@/components/layout/BottomTicker";
 import { Navbar } from "@/components/layout/Navbar";
@@ -25,6 +28,11 @@ async function currentYear() {
   return new Date().getFullYear();
 }
 
+/** Rigged hero models dropped into public/models (see docs/3d-models.md). */
+const riggedModels = ["model-1.glb", "model-2.glb"]
+  .filter((f) => existsSync(join(process.cwd(), "public", "models", f)))
+  .map((f) => `/models/${f}`);
+
 export default async function Home() {
   const [home, catalog, year] = await Promise.all([getHomeContent(), getCatalog(), currentYear()]);
   const { products } = catalog;
@@ -39,7 +47,7 @@ export default async function Home() {
     <CartProvider checkoutBase={checkoutBase}>
       <Navbar items={home.nav} />
       <main className="pb-8">
-        <Hero hero={home.hero} heritage={home.heritage} marquee={home.marquee} />
+        <Hero hero={home.hero} heritage={home.heritage} marquee={home.marquee} riggedModels={riggedModels} />
         <Occasions copy={s.occasions} occasions={catalog.occasions} />
         <TryTheLook copy={s.tryLook} products={pick(PLACEMENT.tryLook)} />
         <PickAFabric copy={s.fabrics} products={pick(PLACEMENT.fabrics)} />
@@ -53,6 +61,7 @@ export default async function Home() {
       <Footer footer={home.footer} nav={home.nav} year={year} />
       <BottomTicker items={home.ticker} />
       <CartDrawer />
+      <OffscreenPauser />
     </CartProvider>
   );
 }
