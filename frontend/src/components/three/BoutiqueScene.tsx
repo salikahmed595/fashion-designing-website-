@@ -1,9 +1,9 @@
 "use client";
 // Hero canvas: the silk curtain parts from the centre, then the camera drifts
 // (handheld) down a teal-and-brass boutique corridor lined with scalloped
-// niches of hanging lehengas, while two models walk out of the side doorways,
-// turn and sit on the magenta velvet sofa. Driven by `progress` (0..1, the
-// hero's scrubbed ScrollTrigger).
+// niches of hanging lehengas to a backlit walk-in wardrobe in the end arch,
+// whose glass doors open as it arrives (the page then fades to the 2D site).
+// Driven by `progress` (0..1, the hero's scrubbed ScrollTrigger).
 //
 // Quality tiers (see quality.ts), chosen once per visit:
 //  - low (integrated GPUs, phones, reduced motion): no post, no shadow maps,
@@ -15,7 +15,7 @@
 // renders while the hero is off screen or the tab is hidden (the clock stops).
 // "curtain" mode renders only the curtain over a transparent canvas (video),
 // and stops once the curtain has gone.
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, Lightformer, PerformanceMonitor } from "@react-three/drei";
 import { Bloom, DepthOfField, EffectComposer, N8AO, SMAA, ToneMapping, Vignette } from "@react-three/postprocessing";
@@ -25,19 +25,16 @@ import SilkCurtain, { CURTAIN_LAYER } from "./SilkCloth";
 import BoutiqueHall from "./BoutiqueHall";
 import BoutiqueGarments from "./BoutiqueGarments";
 import BoutiqueFurniture from "./BoutiqueFurniture";
-import BoutiqueModel from "./BoutiqueModel";
-import { WebGLBoundary, hasWebGL } from "./WebGLBoundary";
+import BoutiqueWardrobe from "./BoutiqueWardrobe";
+import { hasWebGL } from "./WebGLBoundary";
 import { shadowTexture } from "./boutiqueTextures";
-import { BEATS, FINAL_CAM, HALL, SOFA, curtainOpen, remap, sineInOut } from "./boutiqueLayout";
+import { BEATS, FINAL_CAM, HALL, WARDROBE, curtainOpen, remap, sineInOut } from "./boutiqueLayout";
 import { detectQuality, type Quality } from "./quality";
 
-// The GLTF loader only downloads when rigged models are actually configured.
-const BoutiqueRiggedModel = lazy(() => import("./BoutiqueRiggedModel"));
-
 const FOG = "#0d2c2a";
-const FOCUS = new THREE.Vector3(0, 0.95, SOFA.hipZ);
+const FOCUS = new THREE.Vector3(0, 1.25, WARDROBE.frontZ - 0.3);
 
-/** Dolly down the hall at eye level with a handheld drift; the lens lengthens at the end. */
+/** Dolly down the middle of the hall at eye level with a handheld drift, ending square on the wardrobe. */
 function Rig({ progress, narrow, still }: { progress: RefObject<number>; narrow: boolean; still: boolean }) {
   const look = useMemo(() => new THREE.Vector3(), []);
 
@@ -45,30 +42,24 @@ function Rig({ progress, narrow, still }: { progress: RefObject<number>; narrow:
     const camera = state.camera as THREE.PerspectiveCamera;
     const p = progress.current ?? 0;
     const d = sineInOut(remap(p, BEATS.dolly[0], BEATS.dolly[1]));
-    const settle = sineInOut(remap(p, BEATS.settle[0], BEATS.settle[1]));
     const t = still ? 0 : state.clock.elapsedTime;
-    // Handheld: a few slow, incommensurate sines.
-    const hx = Math.sin(t * 0.31) * 0.022 + Math.sin(t * 0.83 + 1.3) * 0.008;
-    const hy = Math.sin(t * 0.47 + 0.4) * 0.016 + Math.sin(t * 1.13) * 0.005;
+    // Handheld: a few slow, incommensurate sines (calming down at the end).
+    const calm = 1 - 0.6 * d;
+    const hx = (Math.sin(t * 0.31) * 0.022 + Math.sin(t * 0.83 + 1.3) * 0.008) * calm;
+    const hy = (Math.sin(t * 0.47 + 0.4) * 0.016 + Math.sin(t * 1.13) * 0.005) * calm;
     const f = narrow ? FINAL_CAM.narrow : FINAL_CAM.wide;
-    const sway = Math.sin(d * Math.PI * 2.2) * 0.18 * (1 - settle);
-    const fov = THREE.MathUtils.lerp(narrow ? 58 : 46, f.fov, settle);
+    const sway = Math.sin(d * Math.PI * 2.2) * 0.18 * (1 - d);
+    const fov = THREE.MathUtils.lerp(narrow ? 58 : 46, f.fov, d);
     if (Math.abs(camera.fov - fov) > 0.01) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
-    camera.position.set(
-      f.x * settle + sway + hx,
-      THREE.MathUtils.lerp(1.5, f.y, d) + hy,
-      THREE.MathUtils.lerp(HALL.entranceZ - 0.8, f.z, d),
-    );
-    look.set(
-      f.lookX * settle + sway * 0.4 + hx * 0.5,
-      THREE.MathUtils.lerp(1.45, f.lookY, d),
-      THREE.MathUtils.lerp(SOFA.backZ - 8, SOFA.hipZ - 1.2, settle),
-    );
+    // A last slow push-in while the page fades.
+    const push = remap(p, BEATS.fade[0] - 0.04, 1) * 0.35;
+    camera.position.set(sway + hx, THREE.MathUtils.lerp(1.5, f.y, d) + hy, THREE.MathUtils.lerp(HALL.entranceZ - 0.8, f.z, d) - push);
+    look.set(sway * 0.4 + hx * 0.5, THREE.MathUtils.lerp(1.45, f.lookY, d), WARDROBE.frontZ - 1);
     camera.lookAt(look);
-    camera.rotateZ(Math.sin(t * 0.37) * 0.003);
+    camera.rotateZ(Math.sin(t * 0.37) * 0.003 * calm);
   });
   return null;
 }
@@ -91,9 +82,9 @@ function Lights({
   const walkR = useRef<THREE.SpotLight>(null);
   useEffect(() => {
     const targets: [THREE.SpotLight | null, [number, number, number]][] = [
-      [key.current, [0, 0.6, SOFA.hipZ]],
-      [walkL.current, [-1.4, 0, SOFA.seatFrontZ + 0.4]],
-      [walkR.current, [1.4, 0, SOFA.seatFrontZ + 0.4]],
+      [key.current, [0, 1.1, WARDROBE.frontZ - 0.3]],
+      [walkL.current, [-1.1, 1.0, WARDROBE.frontZ]],
+      [walkR.current, [1.1, 1.0, WARDROBE.frontZ]],
     ];
     for (const [l, pos] of targets) {
       if (!l) continue;
@@ -109,7 +100,7 @@ function Lights({
       <hemisphereLight args={["#fff0de", "#0d3a37", 0.5]} />
       <spotLight
         ref={key}
-        position={[0.5, 3.85, SOFA.hipZ + 2.6]}
+        position={[0.3, 3.85, WARDROBE.frontZ + 2.4]}
         color="#ffe6c8"
         intensity={70}
         angle={0.62}
@@ -129,7 +120,7 @@ function Lights({
         <spotLight
           key={x as number}
           ref={ref as RefObject<THREE.SpotLight>}
-          position={[x as number, 3.85, SOFA.seatFrontZ + 1.6]}
+          position={[x as number, 3.85, WARDROBE.frontZ + 1.6]}
           color="#ffdcb4"
           intensity={34}
           angle={0.7}
@@ -147,78 +138,6 @@ function Lights({
         <pointLight key={z} position={[0, 3.2, z]} color="#ffcf9a" intensity={lite ? 16 : 10} distance={lite ? 14 : 9} decay={1.5} />
       ))}
       {!lite && <pointLight position={[0, 2.6, HALL.chandelierZ]} color="#ffd6a0" intensity={8} distance={6} decay={1.6} />}
-    </>
-  );
-}
-
-type ModelsProps = {
-  cutouts: string[];
-  rigged: string[];
-  progress: RefObject<number>;
-  still: boolean;
-  castShadows: boolean;
-};
-
-/**
- * Which rigged URLs actually exist: one HEAD request each before the GLTF loader
- * is touched, so a missing file costs one 404 line instead of loader errors.
- */
-function useAvailable(urls: string[]) {
-  const key = urls.join("|");
-  const [ok, setOk] = useState<Record<string, boolean>>({});
-  useEffect(() => {
-    if (!key) return;
-    let alive = true;
-    for (const url of key.split("|")) {
-      fetch(url, { method: "HEAD" })
-        .then((r) => r.ok)
-        .catch(() => false)
-        .then((exists) => alive && setOk((prev) => ({ ...prev, [url]: exists })));
-    }
-    return () => {
-      alive = false;
-    };
-  }, [key]);
-  return ok;
-}
-
-/** Rigged GLB when configured and present (all tiers; ~2 MB, ~30k verts each), else / meanwhile / on failure the cut-out. */
-function Models({ cutouts, rigged, progress, still, castShadows }: ModelsProps) {
-  const shadow = useMemo(() => shadowTexture(), []);
-  const available = useAvailable(rigged);
-  return (
-    <>
-      {([0, 1] as const).map((i) => {
-        const side = i === 0 ? -1 : 1;
-        const cut: ReactNode = cutouts[i] ? (
-          <Suspense fallback={null}>
-            <BoutiqueModel
-              url={cutouts[i]}
-              side={side}
-              index={i}
-              progress={progress}
-              shadow={shadow}
-              still={still}
-              castShadows={castShadows}
-            />
-          </Suspense>
-        ) : null;
-        if (!rigged[i] || !available[rigged[i]]) return <group key={i}>{cut}</group>;
-        return (
-          <WebGLBoundary key={i} fallback={cut}>
-            <Suspense fallback={cut}>
-              <BoutiqueRiggedModel
-                url={rigged[i]}
-                side={side}
-                index={i}
-                progress={progress}
-                still={still}
-                castShadows={castShadows}
-              />
-            </Suspense>
-          </WebGLBoundary>
-        );
-      })}
     </>
   );
 }
@@ -349,16 +268,13 @@ const TIER = {
 export default function BoutiqueScene({
   progress,
   mode,
-  models,
-  rigged = [],
+  wardrobe,
   onReady,
 }: {
   progress: RefObject<number>;
   mode: "hall" | "curtain";
-  /** Transparent cut-out image URLs (always the fallback). */
-  models: string[];
-  /** Rigged GLB URLs (used on medium/high only). */
-  rigged?: string[];
+  /** Hanger cut-out URLs that fill the wardrobe at the end of the hall. */
+  wardrobe: string[];
   onReady?: () => void;
 }) {
   // Client-only (ssr:false), so window is available for these one-time checks.
@@ -454,13 +370,9 @@ export default function BoutiqueScene({
             <BoutiqueHall quality={q} />
             <BoutiqueGarments quality={q} />
             <BoutiqueFurniture rich={rich} blob={blob} />
-            <Models
-              cutouts={models}
-              rigged={rigged}
-              progress={progress}
-              still={env.still}
-              castShadows={shadows}
-            />
+            <Suspense fallback={null}>
+              <BoutiqueWardrobe urls={wardrobe} rich={rich} progress={progress} />
+            </Suspense>
             {fx >= 2 && <Post progress={progress} fx={fx} curtainDone={curtainDone} />}
           </>
         )}

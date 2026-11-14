@@ -64,7 +64,4 @@ For the **back** image, use the same prompt plus: **"Back view of the same garme
 
 Each needs `-front` and `-back` too, e.g. `gulbahar-embroidered-kaftan-rose-front.png`.
 
----
-
-## 3. Hero models
-See [3d-models.md](3d-models.md) for making the two walking models.
+After adding or replacing images, also run `python scripts/cutout.py` in `frontend/` (needs `pip install opencv-python numpy`). It makes the transparent cut-outs in `public/generated/cut/` that Try the Look, the rail and the hero wardrobe use.

@@ -1,5 +1,3 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { OffscreenPauser } from "@/components/motion/OffscreenPauser";
 import { CartProvider } from "@/components/cart/CartProvider";
@@ -28,11 +26,6 @@ async function currentYear() {
   return new Date().getFullYear();
 }
 
-/** Rigged hero models dropped into public/models (see docs/3d-models.md). */
-const riggedModels = ["model-1.glb", "model-2.glb"]
-  .filter((f) => existsSync(join(process.cwd(), "public", "models", f)))
-  .map((f) => `/models/${f}`);
-
 export default async function Home() {
   const [home, catalog, year] = await Promise.all([getHomeContent(), getCatalog(), currentYear()]);
   const { products } = catalog;
@@ -42,12 +35,17 @@ export default async function Home() {
   const railProducts = products.filter((p) =>
     p.categories.some((c) => catalog.garmentTypes.some((g) => g.slug === c.slug)),
   );
+  // Hanger shots (transparent cut-outs) that fill the wardrobe at the end of the hero journey.
+  const wardrobe = railProducts
+    .map((p) => p.colorways[0]?.hanger?.front?.src ?? p.garment.front?.src)
+    .filter((src): src is string => !!src)
+    .slice(0, 13);
 
   return (
     <CartProvider checkoutBase={checkoutBase}>
       <Navbar items={home.nav} />
       <main className="pb-8">
-        <Hero hero={home.hero} heritage={home.heritage} marquee={home.marquee} riggedModels={riggedModels} />
+        <Hero hero={home.hero} heritage={home.heritage} marquee={home.marquee} wardrobe={wardrobe} />
         <Occasions copy={s.occasions} occasions={catalog.occasions} />
         <TryTheLook copy={s.tryLook} products={pick(PLACEMENT.tryLook)} />
         <PickAFabric copy={s.fabrics} products={pick(PLACEMENT.fabrics)} />

@@ -11,7 +11,7 @@ WordPress is the **admin panel only** (headless). The client edits products and 
 | Garment-only shots for The Rail | Gallery images with alt text **"hanger front"** and **"hanger back"** (garment on a hanger, plain background). Without them the site draws the garment shape (from its garment category) filled with a gallery image whose alt contains **"fabric"** (else the first detail photo) |
 | Model cut-out (Try the Look) | Upload a transparent PNG/WebP to the gallery with "cutout" in its alt text or filename |
 | Colour options (Quick View tags) | Product attribute **Colour** with terms like `Rose #d4887f`; gallery holds front+back per colour, in the same order |
-| Hero models / walk-through video | **Settings → Anashion Headless → Hero**: two cut-out images, optional MP4 |
+| Hero walk-through video | **Settings → Anashion Headless → Hero**: optional MP4 (the 3D wardrobe uses the products' transparent "hanger front" images) |
 | Card/ribbon colours | Product attribute **Swatch** with hex terms, e.g. `#e3187d` (optional; falls back to brand colours) |
 | "Try the Look" pieces | Make the look a **Grouped product**; its children are the pieces (blouse, dupatta, jewellery…) **(unverified: Store API grouped field)** |
 | Which products show in each homepage section | Product categories (slugs): `try-the-look`, `pick-a-fabric`, `devotion-edit`, `feel-the-drape`, `bridal-collection`, `in-motion`, `weave` |

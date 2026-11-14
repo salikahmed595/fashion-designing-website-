@@ -1,11 +1,12 @@
 "use client";
 // Section 1: one pinned, scroll-scrubbed scene. A silk curtain parts from the
 // centre and gathers to the sides; the camera dollies down a 3D boutique hallway
-// while two models walk out of the side doorways and sit on the sofa under the
-// big arch; the headline rises in bottom-left. With `hero.video` set, a
+// to a backlit walk-in wardrobe in the big end arch whose glass doors open; the
+// headline rises in bottom-left. At the end the 3D fades into the light 2D page
+// (paper veil, the headline crossfades to ink). With `hero.video` set, a
 // scroll-scrubbed video replaces the hallway (the curtain still opens over it).
 // Fallbacks: no WebGL -> still photo + CSS curtain; reduced motion -> no pin, the
-// final seated frame with the copy. Then the heritage panel and marquee band.
+// open wardrobe with the copy. Then the heritage panel and marquee band.
 import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -16,6 +17,7 @@ import type { HomeContent } from "@/lib/types";
 import { WebGLBoundary } from "@/components/three/WebGLBoundary";
 import { Marquee } from "./hero/Marquee";
 import { CssCurtain } from "./hero/CssCurtain";
+import { BEATS } from "@/components/three/boutiqueLayout";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -26,17 +28,13 @@ export function Hero({
   hero,
   heritage,
   marquee,
-  riggedModels,
+  wardrobe,
 }: {
   hero: HomeContent["hero"];
   heritage: HomeContent["heritage"];
   marquee: HomeContent["marquee"];
-  /**
-   * Optional rigged GLB URLs (e.g. "/models/model-1.glb"), computed by the page
-   * from what exists in public/models. `hero.models` entries ending in .glb
-   * count too. Used on medium/high quality only; cut-outs remain the fallback.
-   */
-  riggedModels?: string[];
+  /** Hanger cut-out URLs (product images) that fill the wardrobe at the end of the hallway. */
+  wardrobe: string[];
 }) {
   const root = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -45,10 +43,6 @@ export function Hero({
   const [glReady, setGlReady] = useState(false);
   const [glFailed, setGlFailed] = useState(false);
   const hasVideo = typeof hero.video === "string" && hero.video.trim() !== "";
-  const isGlb = (u: string) => /\.glb(\?|$)/i.test(u);
-  const allModels = (hero.models ?? []).filter(Boolean);
-  const models = allModels.filter((u) => !isGlb(u)).slice(0, 2);
-  const rigged = (riggedModels?.length ? riggedModels : allModels.filter(isGlb)).slice(0, 2);
 
   useGSAP(
     () => {
@@ -64,8 +58,8 @@ export function Hero({
           const { motion, mobile } = ctx.conditions as Record<string, boolean>;
 
           if (!motion) {
-            // Reduced motion: no pin; the final seated composition and the copy.
-            progress.current = 1;
+            // Reduced motion: no pin; the open wardrobe and the copy.
+            progress.current = BEATS.fade[0];
             gsap.set("[data-css-curtain], [data-cue]", { autoAlpha: 0 });
             gsap.set("[data-shade]", { autoAlpha: 1 });
             const v = video.current;
@@ -118,7 +112,10 @@ export function Hero({
               { y: 48, autoAlpha: 0 },
               { y: 0, autoAlpha: 1, duration: 0.12, stagger: 0.025, ease: "power3.out" },
               0.28,
-            );
+            )
+            // The end: the 3D fades into the light page and the copy turns ink.
+            .to("[data-shade], [data-copy='dark']", { autoAlpha: 0, duration: BEATS.fade[1] - BEATS.fade[0] }, BEATS.fade[0])
+            .fromTo("[data-veil], [data-copy='light']", { autoAlpha: 0 }, { autoAlpha: 1, duration: BEATS.fade[1] - BEATS.fade[0] }, BEATS.fade[0]);
 
           // Heritage: slow Ken Burns zoom across its scroll pass, copy rises in.
           gsap.fromTo(
@@ -184,8 +181,7 @@ export function Hero({
             <BoutiqueScene
               progress={progress}
               mode={hasVideo ? "curtain" : "hall"}
-              models={models}
-              rigged={rigged}
+              wardrobe={wardrobe}
               onReady={() => setGlReady(true)}
             />
           </WebGLBoundary>
@@ -201,45 +197,11 @@ export function Hero({
           <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/15 to-transparent sm:via-transparent" />
         </div>
 
-        <div className="pointer-events-none relative z-30 mx-auto flex h-full max-w-7xl flex-col justify-end px-4 pb-14 text-white sm:px-6 sm:pb-20">
-          <p
-            data-reveal
-            className="flex items-center gap-3 text-[11px] font-semibold tracking-[0.32em] text-gold-soft uppercase sm:text-xs"
-          >
-            <span className="inline-block h-px w-8 bg-gold" />
-            {hero.eyebrow}
-          </p>
-          <h1 className="mt-4 max-w-3xl font-display text-[2.7rem] leading-[0.95] font-medium sm:text-6xl lg:text-7xl">
-            <span data-reveal className="block">
-              {hero.title}
-            </span>
-            <span data-reveal className="block text-gold-soft italic">
-              {hero.titleAccent}
-            </span>
-          </h1>
-          <p data-reveal className="mt-5 max-w-md text-sm leading-relaxed text-white/85 sm:text-base">
-            {hero.subtitle}
-          </p>
-          <div data-reveal className="pointer-events-auto mt-7 flex flex-wrap items-center gap-3">
-            <a
-              href={hero.ctaHref}
-              className="group inline-flex items-center gap-3 rounded-full bg-pink py-2 pr-2 pl-6 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(227,24,125,0.8)] transition-colors hover:bg-pink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              {hero.ctaLabel}
-              <span className="grid size-8 place-items-center rounded-full bg-white/20 transition-transform duration-300 group-hover:translate-x-0.5">
-                →
-              </span>
-            </a>
-            {hero.secondaryLabel && (
-              <a
-                href={hero.secondaryHref}
-                className="inline-flex items-center rounded-full border border-white/40 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                {hero.secondaryLabel}
-              </a>
-            )}
-          </div>
-        </div>
+        {/* End of the journey: a paper veil, so the 3D fades into the 2D site. */}
+        <div data-veil className="pointer-events-none invisible absolute inset-0 z-[25] bg-paper opacity-0" />
+
+        <HeroCopy hero={hero} tone="dark" />
+        <HeroCopy hero={hero} tone="light" />
 
         {/* Scroll hint over the closed curtain. */}
         <div
@@ -279,5 +241,63 @@ export function Hero({
 
       <Marquee words={marquee} />
     </section>
+  );
+}
+
+/** Headline block; rendered twice (white over the 3D, ink over the paper veil) and crossfaded at the end. */
+function HeroCopy({ hero, tone }: { hero: HomeContent["hero"]; tone: "dark" | "light" }) {
+  const light = tone === "light";
+  return (
+    <div
+      data-copy={tone}
+      aria-hidden={light || undefined}
+      className={`pointer-events-none absolute inset-0 z-30 ${light ? "invisible opacity-0" : ""}`}
+    >
+      <div className={`mx-auto flex h-full max-w-7xl flex-col justify-end px-4 pb-14 sm:px-6 sm:pb-20 ${light ? "text-ink" : "text-white"}`}>
+        <p
+          data-reveal={light ? undefined : true}
+          className={`flex items-center gap-3 text-[11px] font-semibold tracking-[0.32em] uppercase sm:text-xs ${light ? "text-pink-deep" : "text-gold-soft"}`}
+        >
+          <span className="inline-block h-px w-8 bg-gold" />
+          {hero.eyebrow}
+        </p>
+        <h1 className="mt-4 max-w-3xl font-display text-[2.7rem] leading-[0.95] font-medium sm:text-6xl lg:text-7xl" role={light ? "presentation" : undefined}>
+          <span data-reveal={light ? undefined : true} className="block">
+            {hero.title}
+          </span>
+          <span data-reveal={light ? undefined : true} className={`block italic ${light ? "text-pink" : "text-gold-soft"}`}>
+            {hero.titleAccent}
+          </span>
+        </h1>
+        <p data-reveal={light ? undefined : true} className={`mt-5 max-w-md text-sm leading-relaxed sm:text-base ${light ? "text-ink-soft" : "text-white/85"}`}>
+          {hero.subtitle}
+        </p>
+        <div data-reveal={light ? undefined : true} className="pointer-events-auto mt-7 flex flex-wrap items-center gap-3">
+          <a
+            href={hero.ctaHref}
+            tabIndex={light ? -1 : undefined}
+            className="group inline-flex items-center gap-3 rounded-full bg-pink py-2 pr-2 pl-6 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(227,24,125,0.8)] transition-colors hover:bg-pink-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink"
+          >
+            {hero.ctaLabel}
+            <span className="grid size-8 place-items-center rounded-full bg-white/20 transition-transform duration-300 group-hover:translate-x-0.5">
+              →
+            </span>
+          </a>
+          {hero.secondaryLabel && (
+            <a
+              href={hero.secondaryHref}
+              tabIndex={light ? -1 : undefined}
+              className={`inline-flex items-center rounded-full border px-6 py-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                light
+                  ? "border-ink/20 text-ink hover:border-pink hover:text-pink focus-visible:outline-pink"
+                  : "border-white/40 bg-white/10 text-white hover:bg-white/20 focus-visible:outline-white"
+              }`}
+            >
+              {hero.secondaryLabel}
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -72,6 +72,14 @@ Legend: ✅ verified · 🟡 proposed/unverified · ❓ open question
   - **Sofa:** only one sofa now, under the end arch (`SOFA` in `boutiqueLayout.ts` moved to z −1.72; the foreground settee and `END_SOFA_DZ` were removed). Models step out of the side doorways (`HALL.doorZ`) and sit on it; the armchairs and pouf moved clear of the path; `FINAL_CAM` z shifted by −3.17
   - **Rigged models built in Blender 5.2** (headless) from the owner's front/back references (`frontend/public/models/references/`, gitignored): `frontend/scripts/rig/prep.py` (OpenCV: GrabCut mask, back aligned and mirrored, depth from the distance transform, joints from proportions plus measured hands) and `rig/build.py` (2.5D volumetric mesh with front/back textures, 15-bone armature, procedural skin weights, `walk`/`sit`/`idle` actions, GLB with WebP textures). Output: `model-1.glb` (1.8 MB, 25k verts) and `model-2.glb` (2.4 MB, 33k verts). Now loaded on **all** tiers. The side views stretch the edge pixels (it's not a true 3D scan)
 - Round 5 check (pane, 1350×760, `?quality=low`, dev restarted so `existsSync` sees the GLBs): both GLBs load (≈1.0/1.4 MB gzipped), models walk in, stand, sit on the arch sofa; scrolling back no longer mixes the seated idle into the walk (fixed in `BoutiqueRiggedModel.tsx`). Detail not judged: the pane was only ~270px wide
+- [x] Round 6 (2026-11-14):
+  - **Hero models removed permanently** (owner's call): `BoutiqueModel`, `BoutiqueRiggedModel`, `boutiqueWalk`, the GLBs, the Blender rig scripts and `docs/3d-models.md` are deleted; `hero.models` was dropped from the types, mock, `wp.ts` and the plugin. The sofa and armchairs are gone too
+  - **Wardrobe ending:** `three/BoutiqueWardrobe.tsx` is a backlit walk-in wardrobe in the end arch (after the owner's closet refs): side bays with bags, LED strips, sideways garments and drawers; a centre bay with black-framed glass doors that open (`BEATS.doors`) onto three front-facing gowns; bench and rug. The garments are the rail hanger cut-outs (`page.tsx` → `Hero wardrobe` prop). The camera ends square on it (`FINAL_CAM`)
+  - **Fade to 2D:** at `BEATS.fade` (0.86–0.98) a paper veil fades in and the hero copy crossfades from white to ink (`HeroCopy` rendered twice in `Hero.tsx`)
+  - **Transparent cut-outs:** `frontend/scripts/cutout.py` (OpenCV GrabCut seeded by background distance) writes `public/generated/cut/{looks,rail}/*.webp`; `gen()` prefers them. Try the Look and the rail no longer use `mix-blend-multiply` for cut-outs
+  - **Rail = streamer9-style closet:** garments hang sideways (rotateY ±74°, packed 50px apart) and only the selected one turns to face front (`TheRail.tsx`)
+  - Owner's replacement images (gulnar, chandni, mehr) are in
+  - Verified in the pane at 1350×760 low: wardrobe and doors render, fade ends on the light copy, rail and Try the Look show cut-outs; lint, tsc and build pass. Detail **unverified** (the pane is only ~270px wide); mobile not checked
 - [ ] Local WordPress install + end-to-end test
 - [ ] Client's real hanger photos (front/back) for each product
 - [ ] Bundle discount enforced at WooCommerce checkout
@@ -93,9 +101,7 @@ Legend: ✅ verified · 🟡 proposed/unverified · ❓ open question
 - WebGL load on low-end phones; scenes pause off-screen and cap DPR 1.75. Needs real-device testing.
 - Unsplash placeholder photos (bridal only) are hotlinked. Replace them before launch.
 - Rail section is ~834px at a 760px viewport (slightly over one screen).
-- Generated `gulnar-sharara` and `shehzadi-gharara` hanger shots are near-identical red/gold sets (regenerate gulnar; see docs/image-prompts.md).
-- Rigged GLBs are 2.5D (inflated silhouettes): good from the front and 3/4, stretched texture at pure side angles.
-- Seated-pose hinge assumes knee/hip at 27%/50% of cut-out height (`BoutiqueModel.tsx`); new model photos may need tuning.
+- WordPress hanger photos must be transparent PNG/WebP to look right in the wardrobe and rail.
 
 ## Key paths & commands
 - Root: `C:\Users\WebTeam Nazim\Desktop\Fashion-Designing-Website`

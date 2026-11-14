@@ -44,7 +44,7 @@ export function ModelVisual({
           const im = e.currentTarget;
           if (im.naturalHeight) onAspect?.(im.naturalWidth / im.naturalHeight);
         }}
-        className="object-contain object-bottom mix-blend-multiply"
+        className="object-contain object-bottom"
       />
     );
   }

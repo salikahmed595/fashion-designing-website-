@@ -33,7 +33,7 @@
 - Categories: `GET {WP_URL}/wp-json/wc/store/v1/products/categories`. Children of `occasions` and `garments` become the occasion arches and rail filters; a `#hex` in a category description becomes its colour.
 - Placement: a product appears in a section when it is in that section's category (`PLACEMENT` in `lib/types.ts`).
 - Product images in WP: gallery order = front, back, details. An image whose alt or filename contains "cutout" becomes `Product.cutout` (transparent full-length model). The "Colour" attribute terms "Name #hex" become `colorways`, consuming gallery images two per colour (front, back). **(unverified against a live store)**
-- Hero: `hero.models` (2 cut-out URLs) walk into the 3D hallway; `hero.video` (MP4) replaces the hallway and is scrubbed by scroll. Encode with frequent keyframes (`-g 1`) for smooth scrubbing.
+- Hero: the 3D hallway ends at a wardrobe filled with the products' transparent hanger shots (rail data); `hero.video` (MP4) replaces the hallway and is scrubbed by scroll. Encode with frequent keyframes (`-g 1`) for smooth scrubbing.
 - Home: `GET {WP_URL}/wp-json/anashion/v1/home` → full `HomeContent` (all section copy, hero/heritage images, marquee, ticker, footer, weave discount). Deep-merged over `mockHome`, so empty fields keep defaults.
 - Checkout: bag → `{WP_URL}/?anashion_cart=ID:QTY[:SIZE],…` → plugin fills the WC cart → WooCommerce checkout.
 - Cache tags: `products` and `home`. These must match between `lib/wp.ts` `TAGS` and the plugin.

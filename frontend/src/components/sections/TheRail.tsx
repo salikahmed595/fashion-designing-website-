@@ -1,6 +1,6 @@
 "use client";
-// The Rail: a wooden clothes rack. Garments hang front-facing on hangers; the selected one is centred and larger with
-// a name/price card. Drag, arrows or keys move the rail; click or Enter opens a garment quick view modal (colour,
+// The Rail: a closet rail. Garments hang sideways (edge-on, packed like a real wardrobe); only the selected one turns
+// to face the front, centred with a name/price card (as on streamer9.digitalamplify.com). Drag, arrows or keys move the rail; click or Enter opens a garment quick view modal (colour,
 // size, add to bag, "See it on the model"). A Grid toggle shows the same pieces as product cards.
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { gsap } from "gsap";
@@ -14,8 +14,9 @@ import { Face } from "./rail/Face";
 
 gsap.registerPlugin(useGSAP);
 
-const DESK = { slot: 180, gw: 156, gh: 224, stage: 365, big: 1.2 };
-const MOB = { slot: 112, gw: 100, gh: 144, stage: 330, big: 1.4 };
+/** gw/gh: garment box; gap: centre → first sideways garment; pack: spacing of sideways garments; side: their turn (deg). */
+const DESK = { slot: 60, gw: 270, gh: 380, stage: 470, gap: 200, pack: 50, side: 74 };
+const MOB = { slot: 40, gw: 170, gh: 240, stage: 340, gap: 128, pack: 30, side: 74 };
 
 const subscribe = (cb: () => void) => {
   const m = window.matchMedia("(min-width: 768px)");
@@ -60,7 +61,7 @@ export function TheRail({ copy, products, garmentTypes }: { copy: SectionCopy; p
     ro.current.observe(el);
   }, []);
 
-  // Lay the rack out: slide the track so the selection is centred, scale/fade the rest (no blur: cheap on old GPUs).
+  // Lay the rail out: the selection faces front in the middle; the rest turn sideways and pack along the rail.
   useGSAP(
     () => {
       if (mode !== "rack") return;
@@ -69,21 +70,27 @@ export function TheRail({ copy, products, garmentTypes }: { copy: SectionCopy; p
       const L = last.current;
       const fresh = L.sel === -1 || L.filter !== filter;
       const animate = !reduce && !fresh && L.d === desktop;
-      const selChanged = !fresh && L.sel !== selIndex;
       last.current = { filter, sel: selIndex, w: stageW, d: desktop };
+      const reach = stageW / 2 + K.gw;
 
       slots.forEach((slot, i) => {
-        const on = i === selIndex;
-        const dist = Math.abs(i - selIndex);
-        const g = slot.querySelector<HTMLElement>("[data-g]");
-        if (!g) return;
-        gsap.set(g, { transformOrigin: "50% 0" });
-        gsap.to(g, { scale: on ? K.big : Math.max(0.7, 0.88 - dist * 0.05), opacity: on ? 1 : Math.max(0.4, 0.8 - dist * 0.15), duration: animate ? 0.6 : 0, ease: "power3.out", overwrite: "auto" });
-        if (on && selChanged && !reduce) gsap.fromTo(g, { rotationZ: 4 }, { rotationZ: 0, duration: 2, ease: "elastic.out(1, 0.3)" });
-        slot.style.zIndex = on ? "10" : "1";
+        const o = i - selIndex;
+        const d = Math.abs(o);
+        const s = Math.sign(o);
+        const x = o === 0 ? 0 : s * (K.gap + (d - 1) * K.pack);
+        gsap.set(slot, { transformOrigin: "50% 0", zIndex: 100 - d });
+        gsap.to(slot, {
+          x,
+          z: o === 0 ? 40 : -30 - d * 6,
+          rotationY: o === 0 ? 0 : -s * K.side,
+          autoAlpha: Math.abs(x) > reach ? 0 : 1,
+          filter: o === 0 ? "brightness(1)" : `brightness(${Math.max(0.7, 0.9 - d * 0.02)})`,
+          duration: animate ? 0.75 : 0,
+          ease: "power3.out",
+          overwrite: "auto",
+        });
       });
-      gsap.to(track.current, { x: stageW / 2 - (selIndex * K.slot + K.slot / 2), duration: animate ? 0.8 : 0, ease: "power3.out", overwrite: "auto" });
-      if (fresh && !reduce) gsap.fromTo(slots, { y: -50, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.7, ease: "power3.out", stagger: 0.03, clearProps: "transform,visibility", overwrite: false });
+      if (fresh && !reduce) gsap.fromTo(slots, { y: -40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out", stagger: 0.025, clearProps: "y,opacity", overwrite: false });
     },
     { scope: root, dependencies: [filter, selIndex, desktop, stageW, mode] },
   );
@@ -211,15 +218,15 @@ export function TheRail({ copy, products, garmentTypes }: { copy: SectionCopy; p
             style={{ height: K.stage }}
           >
             {/* wooden rail */}
-            <div className="pointer-events-none absolute inset-x-0 top-[24px] z-0 h-[10px] bg-gradient-to-b from-[#d9ae78] via-[#b98150] to-[#7a4c29] shadow-[0_5px_8px_rgba(58,28,8,0.25)]" />
+            <div className="pointer-events-none absolute inset-x-0 top-[18px] z-0 h-[8px] rounded-full bg-gradient-to-b from-[#d9ae78] via-[#b98150] to-[#7a4c29] shadow-[0_5px_8px_rgba(58,28,8,0.25)]" />
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[12%] bg-gradient-to-r from-white to-transparent" />
             <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-[12%] bg-gradient-to-l from-white to-transparent" />
 
-            <div ref={track} className="absolute top-0 left-0 flex h-full">
+            <div ref={track} className="absolute inset-0" style={{ perspective: 1400, perspectiveOrigin: "50% 30%", transformStyle: "preserve-3d" }}>
               {shown.map((p) => {
                 const on = sel?.id === p.id;
                 return (
-                  <div key={p.id} data-slot className="relative h-full shrink-0" style={{ width: K.slot }}>
+                  <div key={p.id} data-slot className="absolute top-[14px] left-1/2" style={{ width: K.gw, height: K.gh, marginLeft: -K.gw / 2, transformStyle: "preserve-3d" }}>
                     <button
                       data-g
                       onClick={() => !drag.current.moved && (on ? setModal(p) : select(p.id))}
@@ -227,16 +234,16 @@ export function TheRail({ copy, products, garmentTypes }: { copy: SectionCopy; p
                       aria-label={on ? `Open ${p.name}` : `Select ${p.name}`}
                       aria-current={on}
                       tabIndex={-1}
-                      className="absolute top-[12px] block focus-visible:outline-none"
-                      style={{ left: (K.slot - K.gw) / 2, width: K.gw, height: K.gh, perspective: 1100 }}
+                      className="absolute inset-0 block focus-visible:outline-none"
+                      style={{ transformOrigin: "50% 0", transformStyle: "preserve-3d" }}
                     >
                       <div data-flip className="relative h-full w-full" style={{ transformStyle: "preserve-3d" }}>
                         <div className="absolute inset-0" style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
-                          <Face p={p} view="front" sizes="200px" />
+                          <Face p={p} view="front" sizes={`${K.gw}px`} />
                         </div>
                         {on && (
                           <div className="absolute inset-0" style={{ transform: "rotateY(180deg)", backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
-                            <Face p={p} view="back" sizes="200px" />
+                            <Face p={p} view="back" sizes={`${K.gw}px`} />
                           </div>
                         )}
                       </div>

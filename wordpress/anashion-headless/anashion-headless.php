@@ -51,8 +51,6 @@ function anashion_fields(): array {
 		'hero_secondary_href'   => array( 'Second button link', 'text', 'hero' ),
 		'hero_image'            => array( 'Fallback image (shown if 3D is unavailable)', 'image', 'hero' ),
 		'hero_video'            => array( 'Walk-through video URL (MP4, optional; replaces the 3D hallway, scrubbed by scroll)', 'url', 'hero' ),
-		'hero_model_1'          => array( 'Model 1 cut-out (transparent PNG/WebP)', 'image', 'hero' ),
-		'hero_model_2'          => array( 'Model 2 cut-out (transparent PNG/WebP)', 'image', 'hero' ),
 		'heritage_eyebrow'      => array( 'Small heading', 'text', 'heritage' ),
 		'heritage_title'        => array( 'Title', 'text', 'heritage' ),
 		'heritage_body'         => array( 'Text', 'textarea', 'heritage' ),
@@ -266,7 +264,6 @@ function anashion_rest_home(): WP_REST_Response {
 				'secondaryHref'  => $g( 'hero_secondary_href' ),
 				'image'          => $g( 'hero_image' ),
 				'video'          => $g( 'hero_video' ),
-				'models'         => array_values( array_filter( array( $g( 'hero_model_1' ), $g( 'hero_model_2' ) ) ) ),
 			),
 			'heritage' => array(
 				'eyebrow' => $g( 'heritage_eyebrow' ),

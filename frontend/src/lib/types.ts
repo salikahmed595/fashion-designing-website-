@@ -107,8 +107,6 @@ export type HomeContent = {
     image: string; // still shown if WebGL is unavailable
     /** Optional scroll-scrubbed video (boutique walk-through). Replaces the 3D hallway when set. */
     video: string;
-    /** Two transparent model cut-outs that walk in and sit in the 3D hallway. */
-    models: string[];
   };
   heritage: { eyebrow: string; title: string; body: string; image: string };
   /** Words on the wavy ribbon marquee under the hero. */

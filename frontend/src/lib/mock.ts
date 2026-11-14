@@ -81,6 +81,9 @@ const img = (id: string, alt: string, w?: number): ProductImage => ({
  */
 const GEN_EXT = [".webp", ".png", ".jpg", ".jpeg"];
 function gen(base: string): string | null {
+  // Transparent cut-outs (scripts/cutout.py) win over the plain-background originals.
+  const cut = join(process.cwd(), "public", "generated", "cut", base + ".webp");
+  if (existsSync(cut)) return `/generated/cut/${base}.webp`;
   for (const ext of GEN_EXT) {
     if (existsSync(join(process.cwd(), "public", "generated", base + ext))) return `/generated/${base}${ext}`;
   }
@@ -112,7 +115,6 @@ export const mockHome: HomeContent = {
     secondaryHref: "#rail",
     image: u(STOCK.interior[1], 2000),
     video: "",
-    models: [lb("cut/gown-front"), lb("cut/rose-front")],
   },
   heritage: {
     eyebrow: "The heritage",
