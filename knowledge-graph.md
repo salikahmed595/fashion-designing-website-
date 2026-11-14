@@ -8,7 +8,7 @@ Legend: ✅ verified · 🟡 proposed/unverified · ❓ open question
 - ✅ Local folder tracks `origin/main` of https://github.com/salikahmed595/fashion-designing-website- (remote had only `README.md`).
 - ✅ **Full homepage built** (all 10 reference sections plus footer, bag and fixed ticker) in the Anashion brand theme, running on mock data with Unsplash placeholder photos.
 - ✅ `wordpress/anashion-headless/` plugin v0.2: all homepage copy and images editable, REST `anashion/v1/home`, bag→checkout hand-off, revalidation hooks. Passes `php -l`. **Not yet run inside a real WordPress install.**
-- 🟡 Committed locally on `main` (2026-11-14). **Push blocked:** GitHub 403, account NazimAli28 lacks write access to `salikahmed595/fashion-designing-website-`. The repo owner must add them as a collaborator (Settings → Collaborators), then `git push origin main`.
+- ✅ Pushed to `origin/main` (commit e59e5f0, 2026-11-14) after the owner was granted collaborator access.
 
 ## Goals & requirements
 - ✅ Brand: **Anashion**, "A nation of fashion". Scope (owner decision, round 2): **bridal + modest contemporary wear**. Bridal: lehenga, gharara, sharara, maxi, peshwas. Modest: abaya, kaftan, gown, co-ord, jacket, stole. Client lookbooks are labelled "Modest Contemporary Wear".
@@ -82,7 +82,7 @@ Legend: ✅ verified · 🟡 proposed/unverified · ❓ open question
 - Reference video: `screen-20261114-160716-1794654392905.mp4` and `video-frames/` (local only, gitignored). Frames were extracted with Python + OpenCV in a scratch venv (ffmpeg not installed).
 
 ## Next steps
-1. Owner reviews the site in a full-size browser (`cd frontend && npm run dev`), then commit and push to `main`.
+1. Both devs pull `main` and review the site in a full-size browser (`cd frontend && npm install && npm run dev`).
 2. Set up local WordPress + WooCommerce ([docs/wordpress-setup.md](docs/wordpress-setup.md)) and test the plugin and checkout hand-off end to end.
 3. Enforce the Weave bundle discount in WooCommerce checkout.
 4. Add product detail and category pages.
