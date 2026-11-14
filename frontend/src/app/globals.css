@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Anashion brand tokens (from the logo: magenta disc, black serif wordmark,
+   script tagline on white). Gold is a secondary accent for bridal zari. */
+:root {
+  --paper: #fbfaf9;
+  --mist: #f1eeec;
+  --ink: #141114;
+  --ink-soft: #5d5559;
+  --pink: #e3187d;
+  --pink-deep: #b50e62;
+  --pink-soft: #fbd3e6;
+  --wine: #3a0a22;
+  --gold: #c9a24a;
+  --gold-soft: #ead9a8;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-mist: var(--mist);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-pink: var(--pink);
+  --color-pink-deep: var(--pink-deep);
+  --color-pink-soft: var(--pink-soft);
+  --color-wine: var(--wine);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --font-display: var(--font-cormorant);
+  --font-sans: var(--font-manrope);
+  --font-script: var(--font-script);
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-manrope), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--pink);
+  color: #fff;
+}
+
+/* Mughal/jharokha arch mask used by arched image frames */
+.arch {
+  border-radius: 999px 999px 18px 18px;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.animate-marquee {
+  animation: marquee var(--marquee-duration, 40s) linear infinite;
+}
+
+/* Lenis smooth scroll (package does not export its CSS) */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

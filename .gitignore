@@ -1,0 +1,25 @@
+# Dependencies & builds
+node_modules/
+.next/
+dist/
+out/
+.vercel/
+
+# Env & secrets
+.env
+.env*.local
+
+# Reference media (large / third-party, keep local only)
+*.mp4
+*.mov
+video-frames/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# Local AI tooling
+.claude/
