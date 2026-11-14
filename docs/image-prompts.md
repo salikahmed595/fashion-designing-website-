@@ -1,6 +1,6 @@
 # Image prompts for generated placeholders
 
-Generate these with any image tool (ChatGPT/DALL·E, Gemini/Imagen, Midjourney, Flux, Leonardo…), then save them in the folders below **with exactly these file names**. The site picks them up automatically (`.webp`, `.png` or `.jpg` all work). **Restart `npm run dev` after adding images.**
+Generate these with any image tool (ChatGPT/DALL·E, Gemini/Imagen, Midjourney, Flux, Leonardo…), then save them in the folders below **with exactly these file names**. The site picks them up automatically (`.webp`, `.png` or `.jpg` all work). Then run `npm run images` in `frontend/` (makes small WebP copies the site uses; the PNG originals stay local) and **restart `npm run dev`.**
 
 These are placeholders until the client's real photoshoot. Real photos uploaded to WooCommerce replace them (see `wordpress-setup.md`).
 
@@ -47,7 +47,7 @@ For the **back** image, use the same prompt plus: **"Back view of the same garme
 | `mehr-contrast-kaftan` | Ivory crepe kaftan with a wide black contrast border on the hem and sleeve edges and a tie neck with tassels. |
 | `noor-e-jahan-lehenga` | Crimson raw-silk Pakistani bridal lehenga set: a short heavily embroidered choli on the hanger, the voluminous flared lehenga skirt hanging below it, antique gold zardozi borders, and a red kamdani dupatta draped over the hanger bar. |
 | `shehzadi-gharara` | Deep red bridal gharara set: a short gota-work kurti on the hanger, gharara trousers flared from the knee with gold gota kinari bands hanging below, and a net dupatta over the bar. |
-| `gulnar-sharara` | Pomegranate-red tissue-silk sharara set: a short kameez with resham flower buti, and flared sharara trousers hanging below. |
+| `gulnar-sharara` | Bright pomegranate pink-red (#d4194f) tissue-silk sharara set: a short kameez with pastel resham flower buti and **silver** (not gold) borders, flared sharara trousers hanging below, and a blush organza dupatta. Must look clearly different from the deep red gold gharara. |
 | `mehr-un-nisa-maxi` | Wine-red and gold floor-length Pakistani bridal pishwas maxi with a very full flared skirt and fine nakshi and dabka embroidery. |
 | `zarqa-peshwas` | Plum peshwas (long flared frock) with silver mukesh scatter work and a scalloped embroidered hem. |
 | `sabz-mehndi-lehenga` | Parrot-green mehndi lehenga set with mirror work, a short embroidered choli and a rani-pink dupatta draped over the hanger. |

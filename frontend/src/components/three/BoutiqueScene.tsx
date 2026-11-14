@@ -182,7 +182,7 @@ function useAvailable(urls: string[]) {
   return ok;
 }
 
-/** Rigged GLB when configured and present (medium/high), else / meanwhile / on failure the cut-out. */
+/** Rigged GLB when configured and present (all tiers; ~2 MB, ~30k verts each), else / meanwhile / on failure the cut-out. */
 function Models({ cutouts, rigged, progress, still, castShadows }: ModelsProps) {
   const shadow = useMemo(() => shadowTexture(), []);
   const available = useAvailable(rigged);
@@ -456,7 +456,7 @@ export default function BoutiqueScene({
             <BoutiqueFurniture rich={rich} blob={blob} />
             <Models
               cutouts={models}
-              rigged={q === "low" ? [] : rigged}
+              rigged={rigged}
               progress={progress}
               still={env.still}
               castShadows={shadows}

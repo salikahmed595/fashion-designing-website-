@@ -1,5 +1,5 @@
 "use client";
-// Rigged GLB model for the hero (medium/high tiers, when /models/*.glb exist).
+// Rigged GLB model for the hero (when /models/*.glb exist).
 // Loaded lazily (this file pulls in drei's GLTF loader), scaled to ~1.65 m,
 // moved along the same path and beats as the cut-outs. Animations are matched
 // by name (case-insensitive, contains): "walk" while moving, the first frame of
@@ -114,10 +114,12 @@ export default function BoutiqueRiggedModel({ url, side, index, progress, still,
     const acts = actionsRef.current;
     const walk = clips.walk ? acts[clips.walk] : null;
     const sit = clips.sit ? acts[clips.sit] : null;
+    const idle = clips.idle ? acts[clips.idle] : null;
     const want = st.sit > 0.02 ? "sit" : st.gait > 0.15 ? "walk" : "stand";
     if (want === "walk" && phase.current !== "walk") {
       walk?.reset().fadeIn(0.35).play();
       sit?.fadeOut(0.35);
+      if (idle?.isRunning()) idle.fadeOut(0.35);
       phase.current = "walk";
     } else if (want === "stand" && phase.current !== "stand") {
       if (sit) {
@@ -126,6 +128,7 @@ export default function BoutiqueRiggedModel({ url, side, index, progress, still,
         sit.fadeIn(0.35);
       }
       walk?.fadeOut(0.35);
+      if (idle?.isRunning()) idle.fadeOut(0.35);
       phase.current = "stand";
     } else if (want === "sit" && phase.current === "stand") {
       if (sit) {

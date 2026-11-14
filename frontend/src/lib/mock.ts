@@ -267,7 +267,8 @@ type Seed = {
   blurb: string;
   pieces?: Piece[];
   cutout?: string;
-  colorways?: { name: string; hex: string; photos: string[] }[];
+  /** `rail` overrides the hanger-image base (e.g. the product's main hanger shots). */
+  colorways?: { name: string; hex: string; photos: string[]; rail?: string }[];
   /** Fabric texture for the drawn garment (defaults to a detail crop). */
   fabric?: string;
 };
@@ -297,8 +298,8 @@ const seeds: Seed[] = [
   { name: "Noor Embroidered Gown", price: 89000, garment: "gown", photos: [lb("gown-front"), lb("gown-back"), lb("gown-d1"), lb("gown-d2")], cutout: lb("cut/gown-front"), swatch: ["#141114", "#e8dcc6", "#5d5559"], place: [PLACEMENT.tryLook, PLACEMENT.devotion, PLACEMENT.drape, PLACEMENT.fabrics], blurb: "Black georgette gown with an asymmetric panel of ivory threadwork and sheer embroidered sleeves.", pieces: [piece("Embroidered gown", 89000, "/lookbook/gown-front.webp"), piece("Threadwork panel", 0, "/lookbook/gown-d1.webp"), piece("Sheer sleeve", 0, "/lookbook/gown-d2.webp")] },
   { name: "Shab Embroidered Abaya", price: 64000, garment: "abaya", photos: [lb("abaya-front"), lb("abaya-back"), lb("abaya-d1"), lb("abaya-d2")], cutout: lb("cut/abaya-front"), swatch: ["#141114", "#c9a24a", "#5a1424"], place: [PLACEMENT.tryLook, PLACEMENT.devotion, PLACEMENT.motion, PLACEMENT.fabrics], blurb: "Open black abaya with hand-embroidered gold and wine florals on the shoulder and cuffs.", pieces: [piece("Shab abaya", 64000, "/lookbook/abaya-front.webp"), piece("Shoulder embroidery", 0, "/lookbook/abaya-d1.webp"), piece("Cuff detail", 0, "/lookbook/abaya-d2.webp")] },
   { name: "Chandni Lace Kaftan", price: 48000, garment: "kaftan", photos: [lb("lace-front"), lb("lace-back"), lb("lace-d1"), lb("lace-d2"), lb("lace-d3")], cutout: lb("cut/lace-front"), swatch: ["#f3ecdf", "#141114", "#d9c9a8"], place: [PLACEMENT.tryLook, PLACEMENT.collection, PLACEMENT.drape, PLACEMENT.devotion], blurb: "Ivory chikan lace kaftan with black appliqué florals and crochet-trimmed sleeves.", pieces: [piece("Lace kaftan", 48000, "/lookbook/lace-front.webp"), piece("Keyhole collar", 0, "/lookbook/lace-d1.webp"), piece("Crochet sleeve", 0, "/lookbook/lace-d2.webp"), piece("Appliqué florals", 0, "/lookbook/lace-d3.webp")] },
-  { name: "Gulbahar Embroidered Kaftan", price: 42000, garment: "kaftan", photos: [lb("mauve-front"), lb("mauve-back"), lb("mauve-d1"), lb("mauve-d2"), lb("mauve-d3")], cutout: lb("cut/mauve-front"), swatch: ["#a77a8a", "#f1e6d6", "#c88f8a"], place: [PLACEMENT.tryLook, PLACEMENT.fabrics, PLACEMENT.motion, PLACEMENT.weave], blurb: "Paisley-embroidered kaftan with a scalloped hem, in mauve or rose.", pieces: [piece("Gulbahar kaftan", 42000, "/lookbook/mauve-front.webp"), piece("Embroidered yoke", 0, "/lookbook/mauve-d1.webp"), piece("Scalloped sleeve", 0, "/lookbook/mauve-d2.webp"), piece("Border hem", 0, "/lookbook/mauve-d3.webp")], colorways: [{ name: "Mauve", hex: "#a77a8a", photos: [lb("mauve-front"), lb("mauve-back")] }, { name: "Rose", hex: "#d4887f", photos: [lb("rose-front"), lb("rose-back")] }, { name: "Ivory", hex: "#f1e9dc", photos: [lb("lace-front"), lb("lace-back")] }] },
-  { name: "Saba Draped Cape Set", price: 56000, garment: "co-ord-set", photos: [lb("olive-front"), lb("olive-back"), lb("olive-d1"), lb("olive-d3")], cutout: lb("cut/olive-front"), swatch: ["#7b7a4a", "#141114", "#d8ccb4"], place: [PLACEMENT.tryLook, PLACEMENT.drape, PLACEMENT.collection, PLACEMENT.weave], blurb: "Fluid satin cape, shell and wide trousers with tonal micro-embroidery.", pieces: [piece("Draped cape", 32000, "/lookbook/olive-back.webp"), piece("Satin trousers", 14000, "/lookbook/olive-d3.webp"), piece("Embroidered cuff", 0, "/lookbook/olive-d1.webp")], colorways: [{ name: "Olive", hex: "#7b7a4a", photos: [lb("olive-front"), lb("olive-back")] }, { name: "Sand", hex: "#d8c7ac", photos: [lb("beige-front"), lb("beige-back")] }] },
+  { name: "Gulbahar Embroidered Kaftan", price: 42000, garment: "kaftan", photos: [lb("mauve-front"), lb("mauve-back"), lb("mauve-d1"), lb("mauve-d2"), lb("mauve-d3")], cutout: lb("cut/mauve-front"), swatch: ["#a77a8a", "#f1e6d6", "#c88f8a"], place: [PLACEMENT.tryLook, PLACEMENT.fabrics, PLACEMENT.motion, PLACEMENT.weave], blurb: "Paisley-embroidered kaftan with a scalloped hem, in mauve or rose.", pieces: [piece("Gulbahar kaftan", 42000, "/lookbook/mauve-front.webp"), piece("Embroidered yoke", 0, "/lookbook/mauve-d1.webp"), piece("Scalloped sleeve", 0, "/lookbook/mauve-d2.webp"), piece("Border hem", 0, "/lookbook/mauve-d3.webp")], colorways: [{ name: "Mauve", hex: "#a77a8a", photos: [lb("mauve-front"), lb("mauve-back")] }, { name: "Rose", hex: "#d4887f", photos: [lb("rose-front"), lb("rose-back")] }, { name: "Ivory", hex: "#f1e9dc", photos: [lb("lace-front"), lb("lace-back")] }, { name: "Wine", hex: "#7a1530", photos: [], rail: "gulbahar-embroidered-kaftan" }] },
+  { name: "Saba Draped Cape Set", price: 56000, garment: "co-ord-set", photos: [lb("olive-front"), lb("olive-back"), lb("olive-d1"), lb("olive-d3")], cutout: lb("cut/olive-front"), swatch: ["#7b7a4a", "#141114", "#d8ccb4"], place: [PLACEMENT.tryLook, PLACEMENT.drape, PLACEMENT.collection, PLACEMENT.weave], blurb: "Fluid satin cape, shell and wide trousers with tonal micro-embroidery.", pieces: [piece("Draped cape", 32000, "/lookbook/olive-back.webp"), piece("Satin trousers", 14000, "/lookbook/olive-d3.webp"), piece("Embroidered cuff", 0, "/lookbook/olive-d1.webp")], colorways: [{ name: "Olive", hex: "#7b7a4a", photos: [lb("olive-front"), lb("olive-back")] }, { name: "Sand", hex: "#d8c7ac", photos: [lb("beige-front"), lb("beige-back")] }, { name: "Lilac", hex: "#a98aa0", photos: [], rail: "saba-draped-cape-set" }] },
   { name: "Mehr Contrast Kaftan", price: 38000, garment: "kaftan", photos: [lb("cape-front"), lb("cape-d1"), lb("cape-d2"), lb("cape-d3")], cutout: lb("cut/cape-front"), swatch: ["#efe7da", "#141114", "#c9a24a"], place: [PLACEMENT.tryLook, PLACEMENT.fabrics, PLACEMENT.devotion], blurb: "Ivory crepe kaftan with a black contrast border and a tie neck.", pieces: [piece("Contrast kaftan", 38000, "/lookbook/cape-front.webp"), piece("Tie neck", 0, "/lookbook/cape-d1.webp"), piece("Wide trousers", 9000, "/lookbook/cape-d3.webp")] },
   { name: "The Modern Abaya", fabric: lb("abaya-d2"), price: 36000, garment: "abaya", photos: [lb("col-abaya"), lb("dir-a4")], cutout: lb("cut/col-abaya"), swatch: ["#141114", "#d8c7ac", "#5d5559"], place: [PLACEMENT.motion, PLACEMENT.collection], blurb: "Minimal black abaya with tonal floral embroidery down one side." },
   { name: "Linen Co-ord Set", fabric: lb("beige-d2"), price: 24000, garment: "co-ord-set", photos: [lb("col-coord"), lb("dir-a2")], cutout: lb("cut/col-coord"), swatch: ["#cbb79c", "#efe7da", "#8a7560"], place: [PLACEMENT.fabrics, PLACEMENT.devotion], blurb: "Relaxed linen shirt and wide trousers for everyday ease." },
@@ -338,12 +339,19 @@ const products: Product[] = seeds.map((s, i) => {
     swatch: s.swatch,
     pieces: s.pieces ?? [],
     cutout: ((c) => (c ? img(c, `${s.name} on model`) : null))(gen(`looks/${slug}`) ?? s.cutout),
-    colorways: (s.colorways ?? []).map((c) => ({
-      name: c.name,
-      hex: c.hex,
-      images: c.photos.map((p, k) => img(p, `${s.name}, ${c.name}${k ? " back" : ""}`)),
-      hanger: hangerShots(`${slug}-${c.name.toLowerCase()}`, `${s.name}, ${c.name}`),
-    })),
+    colorways: (s.colorways ?? [])
+      .map((c) => {
+        const hanger = hangerShots(c.rail ?? `${slug}-${c.name.toLowerCase()}`, `${s.name}, ${c.name}`);
+        // A colour with no lookbook photos uses its hanger shots (and is dropped without them).
+        const photos = c.photos.length ? c.photos : [hanger.front?.src, hanger.back?.src].filter((x): x is string => !!x);
+        return {
+          name: c.name,
+          hex: c.hex,
+          images: photos.map((p, k) => img(p, `${s.name}, ${c.name}${k ? " back" : ""}`)),
+          hanger,
+        };
+      })
+      .filter((c) => c.images.length > 0),
     garment: {
       kind: garmentKindOf([garment.slug]),
       fabric: img(s.fabric ?? s.photos[2] ?? STOCK.fabric[i % STOCK.fabric.length], `${s.name} fabric`, 800),

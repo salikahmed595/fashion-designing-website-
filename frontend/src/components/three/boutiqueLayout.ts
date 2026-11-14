@@ -20,28 +20,22 @@ export const HALL = {
   chandelierZ: 0.6,
 } as const;
 
-/**
- * The foreground settee the models sit on (close to the camera, like the
- * reference video's final shot). The original magenta sofa stays under the end
- * arch as backdrop (offset by END_SOFA_DZ).
- */
+/** The magenta sofa under the end arch; the models walk in and sit here. */
 export const SOFA = {
   width: 2.1,
   seatY: 0.46,
-  backZ: 1.45,
-  seatFrontZ: 2.12,
+  backZ: -1.72,
+  seatFrontZ: -1.05,
   /** Where the seated models' hips rest. */
-  hipZ: 1.82,
+  hipZ: -1.35,
   /** Seat positions (x) for the two models. */
   seatX: 0.5,
 } as const;
-/** Offset (z) from the settee to the backdrop sofa under the end arch. */
-export const END_SOFA_DZ = -1.72 - SOFA.backZ;
 
 /** Final camera framing for the seated shot (wide and narrow screens). */
 export const FINAL_CAM = {
-  wide: { x: -0.9, y: 1.12, z: 5.25, lookX: -0.78, lookY: 0.86, fov: 40 },
-  narrow: { x: 0, y: 1.0, z: 5.7, lookX: 0, lookY: 0.4, fov: 52 },
+  wide: { x: -0.9, y: 1.12, z: 2.08, lookX: -0.78, lookY: 0.86, fov: 40 },
+  narrow: { x: 0, y: 1.0, z: 2.53, lookX: 0, lookY: 0.4, fov: 52 },
 } as const;
 
 /** Model height (m). The seat height equals the shin length so the feet stay planted. */

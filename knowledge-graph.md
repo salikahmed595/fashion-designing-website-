@@ -66,7 +66,12 @@ Legend: ✅ verified · 🟡 proposed/unverified · ❓ open question
   - **Occasions:** all round arches, photos anchored at top, neutral fill (the pink dome fade is removed)
   - **Rail:** streamer9-style front-facing wooden rack, Rack/Grid toggle, `rail/HangerModal.tsx` (show back, colour pills, sizes, add to bag, "See it on the model"). Shows only products with real/generated hanger photos once ≥4 exist; drawn `GarmentArt` until then
   - **Generated-image slots:** `public/generated/looks/<slug>.*` (Try the Look models on white, blended with multiply) and `public/generated/rail/<slug>[-colour]-front|back.*` are auto-detected by `lib/mock.ts` (`gen()`); restart dev after adding. Prompts in `docs/image-prompts.md`
-- [ ] Owner generates the images (`docs/image-prompts.md`) and optionally the rigged GLBs or a hero video
+- [x] Round 5 (2026-11-14):
+  - **Generated images in:** 6 looks + 34 rail shots (all slugs and colourways). `npm run images` (`frontend/scripts/optimize-generated.mjs`, sharp) writes WebP next to each PNG: 85.9 MB → 6.4 MB. PNG originals are gitignored; `gen()` prefers `.webp`
+  - **Colour mismatches handled:** the main `gulbahar` hanger shots came out wine-red and the main `saba` ones lilac (the prompts asked for mauve and olive). They're kept as extra colourways **Wine** and **Lilac** (seed `rail` override in `lib/mock.ts`); the first colourway (Mauve/Olive) is the default
+  - **Sofa:** only one sofa now, under the end arch (`SOFA` in `boutiqueLayout.ts` moved to z −1.72; the foreground settee and `END_SOFA_DZ` were removed). Models step out of the side doorways (`HALL.doorZ`) and sit on it; the armchairs and pouf moved clear of the path; `FINAL_CAM` z shifted by −3.17
+  - **Rigged models built in Blender 5.2** (headless) from the owner's front/back references (`frontend/public/models/references/`, gitignored): `frontend/scripts/rig/prep.py` (OpenCV: GrabCut mask, back aligned and mirrored, depth from the distance transform, joints from proportions plus measured hands) and `rig/build.py` (2.5D volumetric mesh with front/back textures, 15-bone armature, procedural skin weights, `walk`/`sit`/`idle` actions, GLB with WebP textures). Output: `model-1.glb` (1.8 MB, 25k verts) and `model-2.glb` (2.4 MB, 33k verts). Now loaded on **all** tiers. The side views stretch the edge pixels (it's not a true 3D scan)
+- Round 5 check (pane, 1350×760, `?quality=low`, dev restarted so `existsSync` sees the GLBs): both GLBs load (≈1.0/1.4 MB gzipped), models walk in, stand, sit on the arch sofa; scrolling back no longer mixes the seated idle into the walk (fixed in `BoutiqueRiggedModel.tsx`). Detail not judged: the pane was only ~270px wide
 - [ ] Local WordPress install + end-to-end test
 - [ ] Client's real hanger photos (front/back) for each product
 - [ ] Bundle discount enforced at WooCommerce checkout
@@ -88,6 +93,8 @@ Legend: ✅ verified · 🟡 proposed/unverified · ❓ open question
 - WebGL load on low-end phones; scenes pause off-screen and cap DPR 1.75. Needs real-device testing.
 - Unsplash placeholder photos (bridal only) are hotlinked. Replace them before launch.
 - Rail section is ~834px at a 760px viewport (slightly over one screen).
+- Generated `gulnar-sharara` and `shehzadi-gharara` hanger shots are near-identical red/gold sets (regenerate gulnar; see docs/image-prompts.md).
+- Rigged GLBs are 2.5D (inflated silhouettes): good from the front and 3/4, stretched texture at pure side angles.
 - Seated-pose hinge assumes knee/hip at 27%/50% of cut-out height (`BoutiqueModel.tsx`); new model photos may need tuning.
 
 ## Key paths & commands

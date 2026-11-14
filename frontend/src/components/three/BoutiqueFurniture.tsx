@@ -1,15 +1,13 @@
 "use client";
-// Boutique furniture: a low magenta channel-tufted velvet settee in the
-// foreground (the models sit here, close to the camera, as in the reference
-// video), the matching scalloped shell-back sofa under the end arch with two
-// shell armchairs (all channels instanced), a green velvet pouf, a full-length arched gold mirror, a glass
+// Boutique furniture: the magenta channel-tufted shell-back sofa under the
+// end arch (the models sit here) with two shell armchairs (all channels instanced), a green velvet pouf, a full-length arched gold mirror, a glass
 // display table with folded fabric, and the medallion rug. Velvet uses
 // MeshPhysicalMaterial sheen on medium/high (Lambert/Phong on low); soft
 // baked contact blobs sit under every piece, and real shadows when enabled.
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { RoundedBox } from "@react-three/drei";
-import { END_SOFA_DZ, HALL, SOFA } from "./boutiqueLayout";
+import { HALL, SOFA } from "./boutiqueLayout";
 import { rugTexture } from "./boutiqueTextures";
 import { surface } from "./boutiqueMaterials";
 
@@ -56,19 +54,16 @@ function chairChannels(): Channel[] {
   return out;
 }
 
-/** The settee in the foreground (low back, the models sit here) and the sofa under the end arch. */
-const SOFAS = [
-  { dz: 0, back: 0.78 },
-  { dz: END_SOFA_DZ, back: 1 },
-];
+/** One sofa, under the end arch (the models sit here). */
+const SOFAS = [{ dz: 0, back: 1 }];
 
-/** Shell armchairs flanking the backdrop sofa, angled toward the room. */
+/** Shell armchairs flanking the sofa, angled toward the room. */
 const CHAIRS = [
-  { x: -1.8, z: -0.75, rot: 0.5 },
-  { x: 1.8, z: -0.75, rot: -0.5 },
+  { x: -1.95, z: -1.1, rot: 0.5 },
+  { x: 1.95, z: -1.1, rot: -0.5 },
 ];
 
-const POUF = [-2.25, 0.35] as const;
+const POUF = [2.2, 1.7] as const;
 
 function Legs({ pts, brass, y = 0.06, h = 0.12 }: { pts: [number, number][]; brass: THREE.Material; y?: number; h?: number }) {
   return (
@@ -180,11 +175,8 @@ export default function BoutiqueFurniture({ rich, blob }: { rich: boolean; blob:
 
   return (
     <group>
-      {/* Rugs: under the foreground settee and under the backdrop seating. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, cz + 0.35]} material={mats.rug} receiveShadow>
-        <planeGeometry args={[3.8, 2.4]} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, END_SOFA_DZ + cz + 0.4]} material={mats.rug} receiveShadow>
+      {/* Rug under the sofa and armchairs. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.006, cz + 0.4]} material={mats.rug} receiveShadow>
         <planeGeometry args={[4.6, 2.6]} />
       </mesh>
       {/* Baked contact shadows under the sofas, chairs and pouf. */}

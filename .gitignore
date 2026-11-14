@@ -23,3 +23,13 @@ Thumbs.db
 
 # Local AI tooling
 .claude/
+
+# Generated image originals (the site uses the optimised .webp; run `npm run images`)
+frontend/public/generated/**/*.png
+frontend/public/generated/**/*.jpg
+frontend/public/generated/**/*.jpeg
+# 3D source references and work files
+frontend/public/models/references/
+*.blend
+*.blend1
+work/

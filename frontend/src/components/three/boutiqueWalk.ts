@@ -3,7 +3,7 @@
 // time, turns to the camera on arrival and then sits, so pausing the scroll
 // never freezes her mid-stride.
 import * as THREE from "three";
-import { BEATS, HIP_V, KNEE_V, MODEL_H, SOFA, remap } from "./boutiqueLayout";
+import { BEATS, HALL, HIP_V, KNEE_V, MODEL_H, SOFA, remap } from "./boutiqueLayout";
 
 export type WalkState = { walk: number; turn: number; sit: number; gait: number; phase: number };
 
@@ -43,13 +43,12 @@ export function stepWalk(st: WalkState, p: number, index: 0 | 1, dt: number, sti
 }
 
 /**
- * Path: enter from just off the frame edge in the near foreground, walk inward
- * and slightly toward the camera, and stop in front of the settee seat (the
+ * Path: step out of the side doorway, walk inward toward the arch, and stop in front of the sofa seat (the
  * sitting hinge then carries the hips back onto it).
  */
 export function walkPath(side: -1 | 1) {
   const thigh = (HIP_V - KNEE_V) * MODEL_H;
   const end = new THREE.Vector3(side * SOFA.seatX, 0, SOFA.hipZ + thigh * Math.sin(1.5));
-  const start = new THREE.Vector3(side * 2.45, 0, end.z + 0.25);
-  return new THREE.QuadraticBezierCurve3(start, new THREE.Vector3(side * 1.35, 0, end.z + 0.75), end);
+  const start = new THREE.Vector3(side * 2.6, 0, HALL.doorZ);
+  return new THREE.QuadraticBezierCurve3(start, new THREE.Vector3(side * 1.4, 0, end.z + 0.7), end);
 }
